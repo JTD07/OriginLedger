@@ -108,19 +108,35 @@ Resend sends invitation, authentication, and billing-related mail. Templates mus
 
 Sentry captures server exceptions and selected client errors. Source maps use `SENTRY_AUTH_TOKEN` in CI, never in the browser. Do not wrap RLS failures into generic 500s that hide tenancy bugs from tests.
 
+## Environment variables
+
+Typed parsing lives in `src/env`. Zod schemas validate values; empty strings are treated as unset.
+
+| Module              | Import from                               | Contains                                   |
+| ------------------- | ----------------------------------------- | ------------------------------------------ |
+| `src/env/public.ts` | Server or Client Components               | `NEXT_PUBLIC_*` only                       |
+| `src/env/server.ts` | Server-only code (`import "server-only"`) | Secret keys and other non-public variables |
+
+`NEXT_PUBLIC_APP_URL` is required at build and server start. Service credentials (Supabase, Stripe, Resend, Sentry) are optional until their milestones, but if set they must match the expected format. Validation errors name the variable and the rule. They never print the invalid value.
+
+`next.config.ts` validates public variables during `next build` / `next dev`. `src/instrumentation.ts` validates public and server variables when the Node.js server starts.
+
+Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
+
 ## Repository layout (target)
 
-Milestone 0 only scaffolds the Next.js app, tooling, and docs. Later milestones add modules under `src/` roughly as:
-
 - `src/app` — routes, layouts, Server Actions, Route Handlers
-- `src/server` — service modules, Zod schemas, Supabase/Stripe/Resend access
+- `src/env` — typed public/server environment parsing
+- `src/server` — service modules, Zod schemas, Supabase/Stripe/Resend access (later milestones)
 - `src/components` — UI that does not own business rules
 - `e2e` — Playwright
 - `docs` — canonical product, architecture, progress
 
 ## Security baseline
 
-- `.env*` is gitignored except `.env.example`, which contains names only.
+- `.env*` is gitignored except `.env.example`, which contains placeholders only, never real secrets.
+- Public env modules must not read or re-export server-only keys.
+- Environment validation errors must not echo secret values.
 - CI uses `pnpm install --frozen-lockfile`.
 - Husky + lint-staged format and lint staged files before commit.
 - No production path uses mock data.
@@ -176,3 +192,10 @@ Milestone 0 only scaffolds the Next.js app, tooling, and docs. Later milestones 
 - **Decision:** Vitest and Testing Library for unit/component tests; Playwright Chromium for e2e smoke and later user journeys.
 - **Why:** Matches current Next.js testing guides. Playwright covers the public landing page in Milestone 0.
 - **Consequences:** `pnpm test` is non-watch CI mode. E2E runs against `next start` after `next build`.
+
+### ADR-008: Zod-parsed environment with a public/server split
+
+- **Status:** Accepted
+- **Decision:** Parse environment variables with Zod. Put `NEXT_PUBLIC_*` in `src/env/public.ts`. Put secrets in `src/env/server.ts` behind `server-only`. Require `NEXT_PUBLIC_APP_URL` immediately. Keep unused service credentials optional until those milestones, and format-check them when present.
+- **Why:** Fail closed on missing app URL without forcing dummy Stripe/Supabase secrets into CI or Playwright production builds. Prevent accidental client bundling of service-role and webhook secrets.
+- **Consequences:** Later service milestones must tighten those variables to required when the matching production path is introduced. CI sets `NEXT_PUBLIC_APP_URL` to the smoke-test origin.

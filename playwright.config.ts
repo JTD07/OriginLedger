@@ -3,6 +3,19 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3000;
 const baseURL = `http://127.0.0.1:${port}`;
 
+function webServerEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === "string") {
+      env[key] = value;
+    }
+  }
+
+  env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? baseURL;
+  return env;
+}
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -25,5 +38,6 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: webServerEnv(),
   },
 });

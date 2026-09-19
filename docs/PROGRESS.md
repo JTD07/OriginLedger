@@ -6,7 +6,7 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
 
 - [x] **Milestone 0 — Initialize the repository**
       Next.js App Router scaffold, tooling, canonical docs, CI, public landing smoke test. No application features beyond the landing page.
-- [ ] **Milestone 1 — Environment and configuration**
+- [x] **Milestone 1 — Environment and configuration**
       Typed env parsing, server/public split, local `.env.local` workflow. No service integrations yet beyond configuration.
 - [ ] **Milestone 2 — Supabase schema and RLS**
       Organizations, memberships, and baseline tenant policies. Generated types. No mock rows in production paths.
@@ -64,4 +64,43 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
 - `corepack enable` may require elevated permissions on Windows; README documents `corepack pnpm` as the fallback.
 - GitHub Actions was not executed on GitHub in this milestone; the workflow file is present and the same local commands were run.
 
-**Next step:** Milestone 1 — environment and configuration. Do not start it until requested.
+**Next step:** Milestone 1 — environment and configuration. Completed 2026-09-19.
+
+### Milestone 1
+
+**Date:** 2026-09-19
+
+**Intent:** Typed environment parsing, public/server split, and clear startup errors. No Supabase schema or other Milestone 2 work.
+
+**Decisions:**
+
+- Zod 4 parses environment variables. `src/env/public.ts` exposes only `NEXT_PUBLIC_*`. `src/env/server.ts` is gated with `server-only`.
+- `NEXT_PUBLIC_APP_URL` is required at `next build` / `next dev` (`next.config.ts`) and Node server start (`src/instrumentation.ts`).
+- Supabase, Stripe, Resend, and Sentry variables stay optional until those milestones, but invalid non-empty values fail closed. Empty strings are treated as unset.
+- Validation errors name the variable and the rule. They never echo the invalid value.
+- CI and Playwright set `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000` so production-mode smoke tests do not need dummy service secrets.
+
+**Commands and results:**
+
+| Command         | Result                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `pnpm format`   | Passed.                                                                                     |
+| `pnpm check`    | Passed. Format, lint, `next typegen && tsc --noEmit`, and Vitest (2 files, 13 tests).       |
+| `pnpm build`    | Passed. Next.js 16.3.5 production build with public env validation in `next.config.ts`.     |
+| `pnpm test:e2e` | Passed after installing Playwright Chromium in this environment. 1 landing-page smoke test. |
+
+The first `pnpm test:e2e` attempt failed because the Playwright Chromium binary was missing from this machine’s cache (`Executable doesn't exist`). That is not an application failure. After `pnpm exec playwright install chromium`, the smoke test passed.
+
+**Security notes:**
+
+- `.env.example` contains placeholders only (`NEXT_PUBLIC_APP_URL=http://localhost:3000`; other keys empty).
+- Server-only keys cannot be imported into a client bundle (`import "server-only"`).
+- Public parse results do not include server-only values even if those keys are present in the source object.
+- No Supabase, Stripe, Resend, or Sentry SDKs were added. No database, RLS, or tenant queries.
+
+**Unresolved risks:**
+
+- Service credentials are still optional. Later milestones must make them required when the matching production path is introduced.
+- GitHub Actions was not executed on GitHub; the workflow now sets `NEXT_PUBLIC_APP_URL`.
+
+**Next step:** Milestone 2 — Supabase schema and RLS. Do not start it until requested.

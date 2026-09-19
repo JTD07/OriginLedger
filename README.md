@@ -35,7 +35,9 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-Fill `.env.local` with real values when a later milestone introduces those services. Do not put secrets in `.env.example` or commit `.env.local`.
+`NEXT_PUBLIC_APP_URL` is required now. Leave the other variables empty until a later milestone introduces that service. Do not put real secrets in `.env.example` or commit `.env.local`.
+
+If `next build`, `next dev`, or `next start` reports `OriginLedger environment is invalid`, the named variable is missing or the wrong shape. The error does not print secret values.
 
 Install the Playwright Chromium browser once per machine (required for `pnpm test:e2e`):
 

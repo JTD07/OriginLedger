@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 30
     env:
       HUSKY: "0"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
     steps:
       - name: Checkout
         uses: actions/checkout@v5

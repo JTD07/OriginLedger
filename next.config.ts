@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
+import { getPublicEnv } from "./src/env/public";
 
-const nextConfig: NextConfig = {/* config options here */};
+getPublicEnv();
+
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
