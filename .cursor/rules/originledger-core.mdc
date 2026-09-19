@@ -1,0 +1,24 @@
+- If present, read docs/PRODUCT_SPEC.md, docs/ARCHITECTURE.md, and docs/PROGRESS.md before changing code. During Milestone 0, create these files.
+
+```md
+
+---
+alwaysApply: true
+---
+
+- Read `docs/PRODUCT_SPEC.md`, `docs/ARCHITECTURE.md`, and `docs/PROGRESS.md` before changing code.
+- Work on only the requested milestone. Do not implement future milestones speculatively.
+- Before editing, inspect relevant files and state a short plan.
+- Use strict TypeScript; do not use `any`, `@ts-ignore`, or unsafe casts to silence errors.
+- Validate all external input with Zod at the server boundary.
+- Treat every database query as multi-tenant. Never query tenant data without enforcing organization membership and RLS.
+- Use server components by default. Add `use client` only where browser interactivity requires it.
+- Keep business rules in testable service modules, not React components.
+- Never expose secrets or Supabase service-role credentials to client code.
+- Never claim the product certifies compliance. Use “supports documentation and transparency workflows.”
+- Add or update tests for every behavior change.
+- Run format, lint, typecheck, relevant tests, and build before declaring a milestone complete.
+- Never delete or weaken a failing test merely to make CI pass.
+- Never modify production data or deploy to production without explicit human instruction.
+- Update `docs/PROGRESS.md` with completed work, verification commands, unresolved risks, and the exact next step.
+```
