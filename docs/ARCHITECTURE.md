@@ -222,7 +222,7 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Status:** Accepted
 - **Decision:** Use `@supabase/ssr` browser and server clients. Refresh the session in `src/proxy.ts` with `getClaims()`. Protect `/app` in Proxy as an optimistic check and again in the `/app` layout. Sign-up, sign-in, sign-out, and password recovery are Server Actions with Zod validation. PKCE email links land on `/auth/confirm`.
 - **Why:** Server Components cannot write cookies; Proxy keeps refreshed tokens on the request and the browser. `getClaims()` verifies the JWT instead of trusting cookie contents.
-- **Consequences:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only. Full organization invitations and role administration wait for Milestone 5.
+- **Consequences:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only. Full organization invitations wait for a later milestone.
 
 ### ADR-011: Private signed uploads with trusted processing
 
@@ -230,6 +230,21 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Decision:** Store origin-record files in a private `origin-assets` bucket. The Next.js server authorizes the user, generates a UUID object key, and issues a signed upload URL. After the client uploads, trusted server code downloads the object, verifies magic bytes, size, and SHA-256, then marks the asset `ready` or `processing_failed`. Preview uses a short-lived signed URL. Authenticated clients cannot UPDATE assets or set `ready`.
 - **Why:** Browser filenames and MIME types are untrusted. RLS still hides other tenants’ rows. Signed URLs avoid exposing the service-role key while keeping the bucket private.
 - **Consequences:** `SUPABASE_SERVICE_ROLE_KEY` is required for issuing upload/preview URLs and for processing. Allowed formats are PDF, JPEG, PNG, and WebP, 25 MB maximum, as documented in `docs/PRODUCT_SPEC.md`.
+
+### ADR-012: Deterministic disclosure rules engine
+
+- **Status:** Accepted
+- **Decision:** Evaluate provenance declarations with a pure function versioned as `disclosure-rules.v1`. Zod validates the complete input before evaluation. English templates use identifiers plus interpolation data. Persist the exact ruleset version with every assessment. A human reviewer records the final decision; the engine never consults an LLM, network, database, or clock.
+- **Why:** Identical inputs must produce identical recommendations. Application behavior must key off stable reason codes, not prose. The product supports documentation and transparency workflows and must not present automation as legal compliance.
+- **Consequences:** Editing a reviewed declaration creates a new version. Changing inputs invalidates the current assessment. Localization later adds catalogs beside `DISCLOSURE_TEMPLATES` (English is `en` for v1) without rewriting `evaluateDisclosure`. Invitations remain a later milestone; they are not part of Milestone 5.
+
+### Milestone 5 declaration versioning
+
+- One declaration lineage exists per ready asset.
+- Version numbers increment. `superseded_from_id` records lineage.
+- At most one working version (`draft` or `pending_review`) exists. Reviewed versions are immutable.
+- Assessments store `ruleset_version`, reason codes, template id, interpolation data, rendered English text, and the human-review notice. Historical assessments keep the declaration version and ruleset they were produced with.
+- `audit_events` are append-only. Metadata never includes raw prompts.
 
 ### Milestone 2 implementation assumptions
 

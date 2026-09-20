@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(49);
 
 select ok(
   not has_table_privilege('anon', 'public.memberships', 'select'),
@@ -124,6 +124,69 @@ select ok(
 select ok(
   has_table_privilege('service_role', 'public.assets', 'select,insert,update,delete'),
   'service_role retains full access to assets'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.provenance_declarations', 'select'),
+  'anon has no select grant on provenance_declarations'
+);
+select ok(
+  not has_table_privilege('anon', 'public.provenance_declaration_versions', 'select'),
+  'anon has no select grant on provenance_declaration_versions'
+);
+select ok(
+  not has_table_privilege('anon', 'public.provenance_assessments', 'select'),
+  'anon has no select grant on provenance_assessments'
+);
+select ok(
+  not has_table_privilege('anon', 'public.provenance_reviews', 'select'),
+  'anon has no select grant on provenance_reviews'
+);
+select ok(
+  not has_table_privilege('anon', 'public.audit_events', 'select'),
+  'anon has no select grant on audit_events'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'public.provenance_declarations', 'delete'),
+  'authenticated cannot delete provenance_declarations'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provenance_declaration_versions', 'delete'),
+  'authenticated cannot delete provenance_declaration_versions'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provenance_assessments', 'delete'),
+  'authenticated cannot delete provenance_assessments'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provenance_reviews', 'delete'),
+  'authenticated cannot delete provenance_reviews'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.audit_events', 'delete'),
+  'authenticated cannot delete audit_events'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provenance_reviews', 'update'),
+  'authenticated cannot update provenance_reviews'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.audit_events', 'update'),
+  'authenticated cannot update audit_events'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.provenance_declarations', 'select'),
+  'authenticated has select grant on provenance_declarations'
+);
+select ok(
+  has_table_privilege('service_role', 'public.provenance_declarations', 'select,insert,update,delete'),
+  'service_role retains full access to provenance_declarations'
+);
+select ok(
+  has_table_privilege('service_role', 'public.audit_events', 'select,insert,update,delete'),
+  'service_role retains full access to audit_events'
 );
 
 select isnt_empty(

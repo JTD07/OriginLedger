@@ -77,6 +77,53 @@ export type Database = {
           },
         ];
       };
+      audit_events: {
+        Row: {
+          asset_id: string | null;
+          created_at: string;
+          created_by: string;
+          declaration_id: string | null;
+          declaration_version_id: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["audit_event_kind"];
+          metadata: Json;
+          organization_id: string;
+          project_id: string | null;
+        };
+        Insert: {
+          asset_id?: string | null;
+          created_at?: string;
+          created_by: string;
+          declaration_id?: string | null;
+          declaration_version_id?: string | null;
+          id?: string;
+          kind: Database["public"]["Enums"]["audit_event_kind"];
+          metadata?: Json;
+          organization_id: string;
+          project_id?: string | null;
+        };
+        Update: {
+          asset_id?: string | null;
+          created_at?: string;
+          created_by?: string;
+          declaration_id?: string | null;
+          declaration_version_id?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["audit_event_kind"];
+          metadata?: Json;
+          organization_id?: string;
+          project_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       documents: {
         Row: {
           byte_size: number | null;
@@ -427,6 +474,268 @@ export type Database = {
           },
         ];
       };
+      provenance_assessments: {
+        Row: {
+          asset_id: string;
+          created_at: string;
+          created_by: string;
+          declaration_id: string;
+          declaration_version_id: string;
+          human_review_notice: string;
+          id: string;
+          interpolation_data: Json;
+          organization_id: string;
+          project_id: string;
+          reason_codes: string[];
+          recommendation_level: string;
+          ruleset_version: string;
+          status: Database["public"]["Enums"]["assessment_status"];
+          template_id: string;
+          visible_disclosure_text: string;
+        };
+        Insert: {
+          asset_id: string;
+          created_at?: string;
+          created_by: string;
+          declaration_id: string;
+          declaration_version_id: string;
+          human_review_notice: string;
+          id?: string;
+          interpolation_data?: Json;
+          organization_id: string;
+          project_id: string;
+          reason_codes: string[];
+          recommendation_level: string;
+          ruleset_version: string;
+          status?: Database["public"]["Enums"]["assessment_status"];
+          template_id: string;
+          visible_disclosure_text: string;
+        };
+        Update: {
+          asset_id?: string;
+          created_at?: string;
+          created_by?: string;
+          declaration_id?: string;
+          declaration_version_id?: string;
+          human_review_notice?: string;
+          id?: string;
+          interpolation_data?: Json;
+          organization_id?: string;
+          project_id?: string;
+          reason_codes?: string[];
+          recommendation_level?: string;
+          ruleset_version?: string;
+          status?: Database["public"]["Enums"]["assessment_status"];
+          template_id?: string;
+          visible_disclosure_text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "provenance_assessments_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_assessments_declaration_org_fkey";
+            columns: ["declaration_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "provenance_declarations";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_assessments_version_org_fkey";
+            columns: [
+              "declaration_version_id",
+              "declaration_id",
+              "organization_id",
+            ];
+            isOneToOne: false;
+            referencedRelation: "provenance_declaration_versions";
+            referencedColumns: ["id", "declaration_id", "organization_id"];
+          },
+        ];
+      };
+      provenance_declaration_versions: {
+        Row: {
+          asset_id: string;
+          created_at: string;
+          created_by: string;
+          declaration_id: string;
+          id: string;
+          organization_id: string;
+          payload: Json;
+          project_id: string;
+          raw_prompt: string | null;
+          raw_prompt_capture_enabled: boolean;
+          status: Database["public"]["Enums"]["declaration_version_status"];
+          superseded_from_id: string | null;
+          updated_at: string;
+          version_number: number;
+        };
+        Insert: {
+          asset_id: string;
+          created_at?: string;
+          created_by: string;
+          declaration_id: string;
+          id?: string;
+          organization_id: string;
+          payload?: Json;
+          project_id: string;
+          raw_prompt?: string | null;
+          raw_prompt_capture_enabled?: boolean;
+          status?: Database["public"]["Enums"]["declaration_version_status"];
+          superseded_from_id?: string | null;
+          updated_at?: string;
+          version_number: number;
+        };
+        Update: {
+          asset_id?: string;
+          created_at?: string;
+          created_by?: string;
+          declaration_id?: string;
+          id?: string;
+          organization_id?: string;
+          payload?: Json;
+          project_id?: string;
+          raw_prompt?: string | null;
+          raw_prompt_capture_enabled?: boolean;
+          status?: Database["public"]["Enums"]["declaration_version_status"];
+          superseded_from_id?: string | null;
+          updated_at?: string;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "provenance_declaration_versions_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_declaration_versions_declaration_org_fkey";
+            columns: ["declaration_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "provenance_declarations";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_declaration_versions_superseded_from_fkey";
+            columns: ["superseded_from_id"];
+            isOneToOne: false;
+            referencedRelation: "provenance_declaration_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      provenance_declarations: {
+        Row: {
+          asset_id: string;
+          created_at: string;
+          created_by: string;
+          current_version_id: string | null;
+          id: string;
+          organization_id: string;
+          project_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          asset_id: string;
+          created_at?: string;
+          created_by: string;
+          current_version_id?: string | null;
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          asset_id?: string;
+          created_at?: string;
+          created_by?: string;
+          current_version_id?: string | null;
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "provenance_declarations_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_declarations_current_version_fkey";
+            columns: ["current_version_id"];
+            isOneToOne: false;
+            referencedRelation: "provenance_declaration_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      provenance_reviews: {
+        Row: {
+          asset_id: string;
+          created_at: string;
+          created_by: string;
+          decision: Database["public"]["Enums"]["review_decision"];
+          declaration_id: string;
+          declaration_version_id: string;
+          id: string;
+          notes: string | null;
+          organization_id: string;
+          project_id: string;
+        };
+        Insert: {
+          asset_id: string;
+          created_at?: string;
+          created_by: string;
+          decision: Database["public"]["Enums"]["review_decision"];
+          declaration_id: string;
+          declaration_version_id: string;
+          id?: string;
+          notes?: string | null;
+          organization_id: string;
+          project_id: string;
+        };
+        Update: {
+          asset_id?: string;
+          created_at?: string;
+          created_by?: string;
+          decision?: Database["public"]["Enums"]["review_decision"];
+          declaration_id?: string;
+          declaration_version_id?: string;
+          id?: string;
+          notes?: string | null;
+          organization_id?: string;
+          project_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "provenance_reviews_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "provenance_reviews_version_org_fkey";
+            columns: [
+              "declaration_version_id",
+              "declaration_id",
+              "organization_id",
+            ];
+            isOneToOne: false;
+            referencedRelation: "provenance_declaration_versions";
+            referencedColumns: ["id", "declaration_id", "organization_id"];
+          },
+        ];
+      };
       subscriptions: {
         Row: {
           created_at: string;
@@ -520,12 +829,21 @@ export type Database = {
       create_organization: { Args: { p_name: string }; Returns: string };
     };
     Enums: {
+      assessment_status: "current" | "superseded" | "invalidated";
       asset_status:
         | "pending_upload"
         | "uploaded"
         | "processing"
         | "ready"
         | "processing_failed";
+      audit_event_kind:
+        | "declaration_created"
+        | "declaration_version_created"
+        | "assessment_generated"
+        | "assessment_invalidated"
+        | "assessment_superseded"
+        | "declaration_reviewed";
+      declaration_version_status: "draft" | "pending_review" | "reviewed";
       document_status: "uploaded" | "attached" | "superseded";
       invitation_status: "pending" | "accepted" | "expired" | "revoked";
       lot_status: "draft" | "active" | "published" | "archived";
@@ -534,6 +852,7 @@ export type Database = {
       origin_event_kind:
         "received" | "processed" | "transferred" | "documented";
       origin_event_status: "recorded" | "superseded";
+      review_decision: "accepted" | "returned";
       subscription_status: "incomplete" | "active" | "past_due" | "canceled";
     };
     CompositeTypes: {
@@ -662,6 +981,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      assessment_status: ["current", "superseded", "invalidated"],
       asset_status: [
         "pending_upload",
         "uploaded",
@@ -669,6 +989,15 @@ export const Constants = {
         "ready",
         "processing_failed",
       ],
+      audit_event_kind: [
+        "declaration_created",
+        "declaration_version_created",
+        "assessment_generated",
+        "assessment_invalidated",
+        "assessment_superseded",
+        "declaration_reviewed",
+      ],
+      declaration_version_status: ["draft", "pending_review", "reviewed"],
       document_status: ["uploaded", "attached", "superseded"],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       lot_status: ["draft", "active", "published", "archived"],
@@ -676,6 +1005,7 @@ export const Constants = {
       membership_status: ["invited", "active", "expired", "revoked"],
       origin_event_kind: ["received", "processed", "transferred", "documented"],
       origin_event_status: ["recorded", "superseded"],
+      review_decision: ["accepted", "returned"],
       subscription_status: ["incomplete", "active", "past_due", "canceled"],
     },
   },

@@ -64,7 +64,8 @@ Platform super-admin is out of scope for the MVP.
 - **Origin event** — an append-only record on a lot (for example received, processed, transferred, documented).
 - **Document** — a file stored in Supabase Storage and linked to a lot or event.
 - **Verification publication** — optional public token and snapshot metadata for a lot.
-- **Subscription** — Stripe-backed billing state for the organization.
+- **Provenance declaration** — a versioned record of how an asset was created, including optional AI-tool metadata. Reviewed versions are immutable.
+- **Disclosure assessment** — a deterministic, versioned recommendation produced from a declaration. It is not a legal or compliance decision.
 
 ## Screens (MVP)
 
@@ -80,14 +81,15 @@ Authenticated:
 5. Home dashboard (counts and recent lots; no mock metrics)
 6. Projects list and project detail
 7. Secure asset upload and asset detail
-8. Products list and product detail
-9. Lots list and lot detail (timeline of origin events)
-10. Event create form
-11. Document upload and document detail
-12. Publish / unpublish verification for a lot
-13. Team: members, invitations, role changes
-14. Organization settings
-15. Billing (Stripe Customer Portal or Checkout; no fabricated invoices)
+8. Provenance declaration wizard and review
+9. Products list and product detail
+10. Lots list and lot detail (timeline of origin events)
+11. Event create form
+12. Document upload and document detail
+13. Publish / unpublish verification for a lot
+14. Team: members, invitations, role changes
+15. Organization settings
+16. Billing (Stripe Customer Portal or Checkout; no fabricated invoices)
 
 Empty, loading, forbidden, and not-found states are required for each authenticated list and detail screen.
 
@@ -159,6 +161,31 @@ processing_failed --> processing
 - `ready`: MIME type, size, SHA-256, and safe metadata were verified from bytes. The client cannot set this state.
 - `processing_failed`: verification failed. The exact server-owned object is removed or quarantined. Failure codes are suitable for support and do not include secrets.
 
+### Provenance declaration version
+
+```text
+draft --> pending_review
+pending_review --> draft
+pending_review --> reviewed
+```
+
+- `draft`: editable working version. Save and resume are allowed.
+- `pending_review`: a current assessment exists. A human reviewer must decide. Editing returns the version to `draft` and invalidates that assessment.
+- `reviewed`: immutable. Further edits create a new version and preserve this one.
+
+A declaration lineage has at most one working version (`draft` or `pending_review`) at a time.
+
+### Disclosure assessment
+
+```text
+current --> invalidated
+current --> superseded
+```
+
+- `current`: the latest evaluation for that declaration version.
+- `invalidated`: inputs changed; this output must not be shown as current.
+- `superseded`: a newer evaluation replaced it for the same version.
+
 ### Invitation
 
 ```text
@@ -205,6 +232,31 @@ Allowed formats are only:
 The browser filename, extension, MIME type, and other client metadata are untrusted. Trusted processing reads magic bytes from the stored object, computes SHA-256, and extracts bounded non-executing metadata. Matching SHA-256 values inside the same organization produce a warning and do not block the new upload. Duplicate information from another organization is never shown.
 
 Objects stay in a private Storage bucket. Preview uses a short-lived signed URL issued only after organization and project authorization. Signed URLs are not stored.
+
+## Provenance declarations (MVP)
+
+Owner, admin, and operator members may create and edit draft declarations for a ready asset in their organization. Viewers may read declarations and cannot mutate them. Owner and admin members may record the human review decision. Operators cannot.
+
+The wizard captures, in order: creation mode; provider; model; model version; generation date; source notes; prompt summary; human edits; distribution regions; content category; realistic-depiction status; public-interest information; editorial-review information.
+
+Raw prompts are optional and off by default. The ordinary field is labeled **Prompt summary**, not Prompt. The product must not pressure anyone to store a raw prompt. If capture is enabled deliberately, the UI must say that the raw text is stored with the same tenant isolation as the declaration.
+
+A reviewed declaration is never edited in place. Editing it creates a new version with an incremented version number and preserves the reviewed history. When declaration inputs change, any current pending assessment is invalidated or superseded so stale recommendation text cannot be presented as current.
+
+## Disclosure rules engine (MVP)
+
+The engine is a pure, versioned server-side function (`disclosure-rules.v1`). It validates its complete input with Zod, then applies explicit deterministic rules. It must not call an LLM, network API, database, current clock, or mutable global state.
+
+Outputs:
+
+- Recommendation level: `none`, `limited`, or `prominent`
+- Stable reason codes
+- Template identifier plus structured interpolation data
+- Rendered English visible disclosure text (plain text)
+- Exact ruleset version
+- A prominent notice that a human reviewer must make the final decision
+
+English is the v1 locale. Template identifiers and interpolation data stay separate from rendered text so later localization can add catalogs without rewriting rule logic. Reason codes are stable machine-readable strings; UI copy must not be used as application control flow.
 
 ## Success criteria for the MVP
 

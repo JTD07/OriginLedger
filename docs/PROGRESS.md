@@ -14,8 +14,8 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Sign up, sign in, session, sign out, recovery. Server-side session handling.
 - [x] **Milestone 4 — Secure asset upload end to end**
       Private Storage, signed uploads, trusted processing, previews, and tenant isolation.
-- [ ] **Milestone 5 — Organizations and roles**
-      Invitations and role enforcement matching `docs/PRODUCT_SPEC.md`.
+- [x] **Milestone 5 — Provenance declarations and disclosure rules engine**
+      Versioned declarations, deterministic recommendations, human review. Not invitations.
 - [ ] **Milestone 6 — Products, lots, and origin events**
       Append-oriented timeline. Tenancy tests.
 - [ ] **Milestone 7 — Documents**
@@ -216,7 +216,7 @@ Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in t
 - Private `origin-assets` bucket. Server generates `{organizationId}/{projectId}/{assetId}` keys. Clients cannot UPDATE assets or mark `ready`.
 - Owner, admin, and operator members upload. Viewers read ready assets. Allowed formats are only PDF, JPEG, PNG, and WebP. Maximum 25 MiB.
 - Trusted processing reads magic bytes, SHA-256, and bounded dimensions. Same-organization SHA-256 matches warn and do not block. Previews use short-lived signed URLs after org/project authorization. JPEG/PNG/WebP render inline; PDF is download/metadata-only.
-- Minimal organization and project create is included so upload is usable. Invitations and role administration wait for Milestone 5.
+- Minimal organization and project create is included so upload is usable. Invitations and role administration remain a later milestone (not Milestone 5).
 
 **Commands and results:**
 
@@ -245,4 +245,49 @@ Git tracking: `.env.example` is tracked. `.env.local`, `scripts/probe-org.mjs`, 
 - Local PostgREST rejected user-scoped `INSERT` into `organizations` with `42501` even with a session. The service-role fallback is constrained to the `getClaims()` user id. Milestone 5 should keep verifying this path.
 - Hosted projects were not migrated. Do not apply these migrations to production from this milestone.
 
-**Next step:** Milestone 5 — Organizations and roles. Do not start it until requested.
+**Next step:** Milestone 5 — Provenance declarations and disclosure rules engine. Completed 2026-09-20.
+
+### Milestone 5
+
+**Date:** 2026-09-20
+
+**Intent:** Provenance declaration workflow and a deterministic disclosure-rules engine only. Relabel the stale “Organizations and roles” milestone. Do not reimplement completed organization or role features. Do not start Milestone 6.
+
+**Decisions:**
+
+- One declaration lineage per ready asset. Working versions are `draft` or `pending_review`; a reviewed version is immutable and edits create a new version with lineage (`version_number`, `superseded_from_id`).
+- `evaluateDisclosure` is a pure function versioned as `disclosure-rules.v1`. Zod validates the complete input. English templates use identifiers plus interpolation data. Assessments persist that exact ruleset version. The UI never labels the recommendation as a final compliance decision.
+- Owner and admin record human review. Operators create, save, submit, and fork drafts. Viewers read. Raw prompts are optional, off by default, labeled separately from **Prompt summary**, and excluded from audit metadata.
+- Invitations remain a later milestone.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                                                                             |
+| `pnpm supabase:start` | Passed. Local stack started from backup; hosted/production projects were not touched.                                                                                               |
+| `pnpm supabase:reset` | Passed. Applied `20260919194343_initial_schema.sql`, `20260920073307_asset_upload.sql`, `20260920075601_create_organization.sql`, and `20260920202844_provenance_declarations.sql`. |
+| `pnpm supabase:test`  | Passed. 7 files, 118 tests (previous 75 plus declaration RLS/versioning/review cases and grant checks).                                                                             |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                                                                      |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (17 files, 82 tests).                                                                                                                   |
+| `pnpm build`          | Passed. Routes include `/app/assets/[assetId]/declaration`.                                                                                                                         |
+| `pnpm test:e2e`       | Passed after `pnpm exec playwright install chromium` in this environment. 15 Chromium tests, including declaration save/resume, review, version fork, and cross-tenant denial.      |
+
+The first `pnpm test:e2e` attempt failed because Playwright Chromium was missing from this machine’s cache, then one declaration test failed because `getByLabel("Provider")` also matched the step progress bar. The progress accessible name was narrowed to “Step N of 7”, and the test now targets the Provider textbox. Those are not product-logic failures.
+
+Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in the index. Raw prompts are not written to audit metadata.
+
+**Security notes:**
+
+- Declaration, version, assessment, review, and audit reads/writes are organization-scoped in application code and RLS.
+- Authenticated clients have no DELETE on these tables, no UPDATE on reviews or audit events, and no anon GRANT.
+- Reviewed versions cannot be updated in place (RLS hides them from mutators; a trigger still rejects in-place edits if RLS is bypassed).
+- Unique indexes allow only one working version and one current assessment per version.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to production from this milestone.
+- The local organization-insert `42501` fallback from Milestone 4 is unchanged.
+- Localization catalogs beyond English `en` are structured but not implemented.
+
+**Next step:** Milestone 6 — Products, lots, and origin events. Do not start it until requested.

@@ -80,6 +80,16 @@ export default async function AssetDetailPage({
           <dd>{asset.byte_size} bytes</dd>
         </dl>
       ) : null}
+      {asset.status === "ready" ? (
+        <p>
+          <Link
+            className="underline"
+            href={`/app/assets/${asset.id}/declaration`}
+          >
+            Provenance declaration
+          </Link>
+        </p>
+      ) : null}
       {inline ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
