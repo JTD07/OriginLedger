@@ -80,7 +80,7 @@ flowchart LR
 
 ## Auth and session
 
-Supabase Auth issues the session. The Next.js server reads cookies via the official `@supabase/ssr` patterns (introduced in a later milestone). Client components do not persist service credentials. Password recovery and invitations use Resend, not a mock mailbox.
+Supabase Auth issues the session. The Next.js server reads cookies via `@supabase/ssr`. `src/proxy.ts` refreshes tokens with `getClaims()` on each matched request. Server Components and Server Actions verify identity with `getClaims()` again; they never trust `getSession()` for authorization. Client components do not persist service credentials. Password recovery uses the Auth confirmation route. Hosted invitation and auth mail via Resend waits for Milestone 9.
 
 ## Data and RLS
 
@@ -122,7 +122,7 @@ Typed parsing lives in `src/env`. Zod schemas validate values; empty strings are
 | `src/env/public.ts` | Server or Client Components               | `NEXT_PUBLIC_*` only                       |
 | `src/env/server.ts` | Server-only code (`import "server-only"`) | Secret keys and other non-public variables |
 
-`NEXT_PUBLIC_APP_URL` is required at build and server start. Service credentials (Supabase, Stripe, Resend, Sentry) are optional until their milestones, but if set they must match the expected format. Validation errors name the variable and the rule. They never print the invalid value.
+`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required at build and server start. Remaining service credentials (Stripe, Resend, Sentry, and the Supabase service-role key) are optional until their milestones, but if set they must match the expected format. Validation errors name the variable and the rule. They never print the invalid value.
 
 `next.config.ts` validates public variables during `next build` / `next dev`. `src/instrumentation.ts` validates public and server variables when the Node.js server starts.
 
@@ -132,6 +132,8 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 
 - `src/app` — routes, layouts, Server Actions, Route Handlers
 - `src/env` — typed public/server environment parsing
+- `src/lib/supabase` — cookie-aware Supabase clients and session refresh
+- `src/server` — service modules, Zod schemas, Supabase/Stripe/Resend access
 - `src/types` — checked-in database types
 - `supabase/migrations` — versioned schema and RLS
 - `supabase/tests` — pgTAP access tests
@@ -206,7 +208,7 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Status:** Accepted
 - **Decision:** Parse environment variables with Zod. Put `NEXT_PUBLIC_*` in `src/env/public.ts`. Put secrets in `src/env/server.ts` behind `server-only`. Require `NEXT_PUBLIC_APP_URL` immediately. Keep unused service credentials optional until those milestones, and format-check them when present.
 - **Why:** Fail closed on missing app URL without forcing dummy Stripe/Supabase secrets into CI or Playwright production builds. Prevent accidental client bundling of service-role and webhook secrets.
-- **Consequences:** Later service milestones must tighten those variables to required when the matching production path is introduced. CI sets `NEXT_PUBLIC_APP_URL` to the smoke-test origin.
+- **Consequences:** Authentication made `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` required. Remaining service credentials stay optional until those milestones. CI sets public app URL and local-style Supabase placeholders for production-mode smoke tests.
 
 ### ADR-009: Local migrations as the schema source of truth
 
@@ -214,6 +216,13 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Decision:** Version Postgres schema and RLS in `supabase/migrations`. Test policies with pgTAP via `supabase test db`. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Do not apply these migrations to a hosted production database from Milestone 2.
 - **Why:** RLS must deny cross-tenant access even if application code is wrong. Local Docker is the verification environment.
 - **Consequences:** Contributors need Docker to run `pnpm supabase:start` and `pnpm supabase:test`. App CI stays runnable without Docker; a separate `database` GitHub Actions job starts the local stack.
+
+### ADR-010: Cookie sessions with `@supabase/ssr` and Next.js Proxy
+
+- **Status:** Accepted
+- **Decision:** Use `@supabase/ssr` browser and server clients. Refresh the session in `src/proxy.ts` with `getClaims()`. Protect `/app` in Proxy as an optimistic check and again in the `/app` layout. Sign-up, sign-in, sign-out, and password recovery are Server Actions with Zod validation. PKCE email links land on `/auth/confirm`.
+- **Why:** Server Components cannot write cookies; Proxy keeps refreshed tokens on the request and the browser. `getClaims()` verifies the JWT instead of trusting cookie contents.
+- **Consequences:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only and is unused on ordinary auth paths. Organization create/choose waits for Milestone 4.
 
 ### Milestone 2 implementation assumptions
 

@@ -58,6 +58,14 @@ const optionalNonEmptyString = z.preprocess(
   z.string().min(1, { error: "must not be empty when set" }).optional(),
 );
 
+const requiredNonEmptyString = z.preprocess(
+  emptyToUndefined,
+  z.string().min(1, {
+    error: (issue) =>
+      issue.input === undefined ? "must be set" : "must not be empty",
+  }),
+);
+
 const optionalPrefixedString = (prefix: string) =>
   z.preprocess(
     emptyToUndefined,
@@ -76,8 +84,8 @@ const optionalEmail = z.preprocess(
 
 export const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: requiredHttpUrl,
-  NEXT_PUBLIC_SUPABASE_URL: optionalHttpUrl,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: optionalNonEmptyString,
+  NEXT_PUBLIC_SUPABASE_URL: requiredHttpUrl,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: requiredNonEmptyString,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalPrefixedString("pk_"),
   NEXT_PUBLIC_SENTRY_DSN: optionalHttpUrl,
 });

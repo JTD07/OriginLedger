@@ -3,8 +3,8 @@ import { publicEnvSchema, serverEnvSchema, type EnvSource } from "./schema";
 
 export type PublicEnv = {
   appUrl: string;
-  supabaseUrl: string | undefined;
-  supabaseAnonKey: string | undefined;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
   stripePublishableKey: string | undefined;
   sentryDsn: string | undefined;
 };

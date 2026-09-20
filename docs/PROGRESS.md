@@ -10,7 +10,7 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Typed env parsing, server/public split, local `.env.local` workflow. No service integrations yet beyond configuration.
 - [x] **Milestone 2 — Supabase schema and RLS**
       Organizations, memberships, and baseline tenant policies. Generated types. No mock rows in production paths.
-- [ ] **Milestone 3 — Authentication**
+- [x] **Milestone 3 — Authentication**
       Sign up, sign in, session, sign out, recovery. Server-side session handling.
 - [ ] **Milestone 4 — Organizations and roles**
       Create organization, invitations, role enforcement matching `docs/PRODUCT_SPEC.md`.
@@ -159,4 +159,46 @@ pgTAP failed with PostgreSQL `22P02` because product fixtures used `p1111111-111
 
 Git tracking: `.env.example` is tracked. `.env.local` is ignored (`.gitignore` `.env.*`) and is not in the index.
 
-**Next step:** Milestone 3 — Authentication. Do not start it until requested.
+**Next step:** Milestone 3 — Authentication. Completed 2026-09-20.
+
+### Milestone 3
+
+**Date:** 2026-09-20
+
+**Intent:** Sign up, sign in, sign out, password recovery, and server-side cookie sessions. No organization create/choose UI (Milestone 4).
+
+**Decisions:**
+
+- `@supabase/ssr` cookie clients plus Next.js 16 `src/proxy.ts` refresh sessions with `getClaims()`. `/app` is checked again in the layout.
+- Auth mutations are Server Actions. Zod validates email and password before calling Auth. Provider error text is never shown.
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only and unused on these paths.
+- Local Auth email confirmation remains off in `supabase/config.toml` so sign-up can create a session. Recovery and confirmation links use `/auth/confirm` with PKCE `token_hash` templates.
+- Organization setup is not implemented. `/app` only shows the signed-in identity and sign out.
+
+**Commands and results:**
+
+| Command             | Result                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm format`       | Passed.                                                                                       |
+| `pnpm format:check` | Passed.                                                                                       |
+| `pnpm lint`         | Passed after removing an unused `setAll` parameter.                                           |
+| `pnpm typecheck`    | Passed after copying refreshed cookies with `cookies.set` (no `setAll` on `ResponseCookies`). |
+| `pnpm test`         | Passed. 6 files, 29 tests.                                                                    |
+| `pnpm build`        | Passed. Static `/`, `/sign-up`, `/recover`; dynamic `/app`, `/sign-in`, `/update-password`.   |
+| `pnpm test:e2e`     | Passed after `pnpm exec playwright install chromium` in this sandbox. 5 Chromium tests.       |
+
+Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in the index.
+
+**Security notes:**
+
+- Session identity on the server uses `getClaims()`, not `getSession()`.
+- Password recovery always returns the same notice so account existence is not leaked.
+- Open redirects via `next` are rejected.
+- No `NEXT_PUBLIC_` service-role variable. Ordinary auth paths do not use the service-role key.
+
+**Unresolved risks:**
+
+- Full sign-up/sign-in against a live Auth server was not part of Playwright; those tests cover public forms and the unauthenticated `/app` redirect. Local round-trips need `pnpm supabase:start` and keys in `.env.local`.
+- Hosted projects must allow `/auth/confirm` in Auth redirect URLs and keep email templates on the `token_hash` links.
+
+**Next step:** Milestone 4 — Organizations and roles. Do not start it until requested.

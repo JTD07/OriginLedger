@@ -5,6 +5,8 @@ import { PUBLIC_ENV_KEYS, SERVER_ONLY_ENV_KEYS } from "./schema";
 
 const validPublicSource = {
   NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000",
+  NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "local-anon-key",
 };
 
 describe("environment key split", () => {
@@ -27,8 +29,8 @@ describe("parsePublicEnv", () => {
   test("accepts a valid app URL", () => {
     expect(parsePublicEnv(validPublicSource)).toEqual({
       appUrl: "http://127.0.0.1:3000",
-      supabaseUrl: undefined,
-      supabaseAnonKey: undefined,
+      supabaseUrl: "http://127.0.0.1:54321",
+      supabaseAnonKey: "local-anon-key",
       stripePublishableKey: undefined,
       sentryDsn: undefined,
     });
@@ -52,6 +54,22 @@ describe("parsePublicEnv", () => {
     expect(() => parsePublicEnv({ NEXT_PUBLIC_APP_URL: "   " })).toThrow(
       EnvValidationError,
     );
+  });
+
+  test("requires the public Supabase URL and anon key", () => {
+    expect(() =>
+      parsePublicEnv({ NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000" }),
+    ).toThrow(EnvValidationError);
+
+    try {
+      parsePublicEnv({ NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000" });
+    } catch (error) {
+      expect(error).toBeInstanceOf(EnvValidationError);
+      const message = error instanceof EnvValidationError ? error.message : "";
+      expect(message).toContain("NEXT_PUBLIC_SUPABASE_URL");
+      expect(message).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+      expect(message).toContain("must be set");
+    }
   });
 
   test("throws a clear error when the app URL is missing", () => {
