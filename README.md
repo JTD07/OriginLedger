@@ -7,6 +7,7 @@ OriginLedger supports documentation and transparency workflows for product origi
 - Node.js **24.21.0** (current Node.js LTS), pinned in `.nvmrc`
 - [pnpm](https://pnpm.io) **12.4.2**, pinned in `package.json` as `packageManager`
 - Git
+- Docker Desktop or Podman, required only for local Supabase (`pnpm supabase:start` and `pnpm supabase:test`)
 
 Enable pnpm through Corepack (ships with Node.js):
 
@@ -35,9 +36,25 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-`NEXT_PUBLIC_APP_URL` is required now. Leave the other variables empty until a later milestone introduces that service. Do not put real secrets in `.env.example` or commit `.env.local`.
+`NEXT_PUBLIC_APP_URL` is required now. Leave Stripe, Resend, and Sentry empty until those milestones. Do not put real secrets in `.env.example` or commit `.env.local`.
 
 If `next build`, `next dev`, or `next start` reports `OriginLedger environment is invalid`, the named variable is missing or the wrong shape. The error does not print secret values.
+
+## Local Supabase
+
+Docker Desktop (or another Docker engine) is required. This machine-local stack is the source of truth for schema and RLS. Do not reset or migrate a hosted production project from this milestone.
+
+```bash
+pnpm supabase:start
+pnpm supabase:reset
+pnpm supabase:test
+pnpm supabase:types
+pnpm supabase:stop
+```
+
+`pnpm supabase:start` prints `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the service-role key. Put those values in `.env.local`. Keep the service-role key server-only.
+
+`pnpm supabase:test` runs pgTAP RLS tests against the local database. `pnpm supabase:types` regenerates `src/types/database.ts` from the local schema.
 
 Install the Playwright Chromium browser once per machine (required for `pnpm test:e2e`):
 
@@ -59,6 +76,11 @@ pnpm test
 pnpm test:watch
 pnpm test:e2e
 pnpm check
+pnpm supabase:start
+pnpm supabase:stop
+pnpm supabase:reset
+pnpm supabase:test
+pnpm supabase:types
 ```
 
 `pnpm check` runs format checking, linting, type checking, and unit tests.
@@ -73,6 +95,7 @@ pnpm test:e2e
 ## Verification
 
 ```bash
+pnpm supabase:test
 pnpm check
 pnpm build
 pnpm test:e2e

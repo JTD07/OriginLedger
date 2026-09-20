@@ -17,6 +17,12 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "supabase": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:test": "supabase test db",
+    "supabase:types": "supabase gen types --local --lang typescript > src/types/database.ts",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -51,6 +57,7 @@
     "jsdom": "^30.1.0",
     "lint-staged": "^17.5.1",
     "prettier": "^3.9.8",
+    "supabase": "2.116.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",

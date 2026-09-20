@@ -8,7 +8,7 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Next.js App Router scaffold, tooling, canonical docs, CI, public landing smoke test. No application features beyond the landing page.
 - [x] **Milestone 1 — Environment and configuration**
       Typed env parsing, server/public split, local `.env.local` workflow. No service integrations yet beyond configuration.
-- [ ] **Milestone 2 — Supabase schema and RLS**
+- [x] **Milestone 2 — Supabase schema and RLS**
       Organizations, memberships, and baseline tenant policies. Generated types. No mock rows in production paths.
 - [ ] **Milestone 3 — Authentication**
       Sign up, sign in, session, sign out, recovery. Server-side session handling.
@@ -103,4 +103,60 @@ The first `pnpm test:e2e` attempt failed because the Playwright Chromium binary 
 - Service credentials are still optional. Later milestones must make them required when the matching production path is introduced.
 - GitHub Actions was not executed on GitHub; the workflow now sets `NEXT_PUBLIC_APP_URL`.
 
-**Next step:** Milestone 2 — Supabase schema and RLS. Do not start it until requested.
+**Next step:** Milestone 2 — Supabase schema and RLS. Completed 2026-09-19.
+
+### Milestone 2
+
+**Date:** 2026-09-19
+
+**Intent:** Version-controlled Postgres schema and least-privilege RLS for the documented product model. No authentication UI (Milestone 3).
+
+**Decisions and assumptions:**
+
+- Local `supabase/migrations` is the source of truth. Hosted/production databases were not touched.
+- The full product-model tables are in this migration so RLS can be tested; application features remain later milestones.
+- Origin event kinds are the spec examples: `received`, `processed`, `transferred`, `documented`.
+- Anonymous reads require a published lot (and `is_publishable` for events/documents). Memberships, invitations, and subscriptions have no anon GRANT.
+- Stripe identifiers live on `subscriptions`, not organizations.
+- `SUPABASE_SERVICE_ROLE_KEY` remains server-only. No `NEXT_PUBLIC_` service-role variable.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm supabase:start` | Failed. Docker/Podman is not installed (`docker: command not found`).                                                                                  |
+| `pnpm supabase:test`  | Did not run. Blocked on local Supabase start.                                                                                                          |
+| `pnpm supabase:types` | Did not run. Blocked on local Supabase start. `src/types/database.ts` matches the migration by hand and must be regenerated after Docker is available. |
+| `pnpm format`         | Passed.                                                                                                                                                |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (2 files, 13 tests).                                                                                       |
+| `pnpm build`          | Passed.                                                                                                                                                |
+| `pnpm test:e2e`       | Passed. 1 landing-page smoke test.                                                                                                                     |
+
+Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in the index.
+
+**Security notes:**
+
+- RLS is enabled on every public application table. Client GRANTs are explicit (`auto_expose_new_tables = false`).
+- Helper functions are in the unexposed `private` schema.
+- No Supabase Auth UI, session cookies, or `@supabase/ssr` client were added.
+
+**Unresolved risks (initial run):**
+
+- pgTAP RLS tests and CLI type generation were blocked because Docker was not installed in the first Milestone 2 environment.
+
+**Follow-up (2026-09-19) — local database validation:**
+
+pgTAP failed with PostgreSQL `22P02` because product fixtures used `p1111111-1111-1111-1111-111111111111`. `p` is not a hexadecimal UUID digit, so inserts were rejected and later assertions/plan checks cascaded. The invalid product id was replaced with `c1111111-1111-1111-1111-111111111111` in `roles_test.sql`, `public_verification_test.sql`, and `origin_events_test.sql`, keeping lot `product_id` foreign keys aligned. No other fixtures contained invalid UUID characters. RLS assertions and pgTAP plan counts were not changed; the suite then reported 55 passing tests.
+
+| Command               | Result                                                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm supabase:reset` | Passed. Recreated the local database and applied `20260919194343_initial_schema.sql`.                                                                      |
+| `pnpm supabase:test`  | Passed. 5 files, 55 tests (`grants`, `origin_events`, `public_verification`, `roles`, `tenancy`).                                                          |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts` from the local schema; Prettier was applied so `format:check` accepts the CLI output.                          |
+| `pnpm check`          | Passed after formatting generated types. Format, lint, typecheck, and Vitest (2 files, 13 tests). First `check` failed only on Prettier for `database.ts`. |
+| `pnpm build`          | Passed. Next.js 16.3.5 production build. Static route `/`.                                                                                                 |
+| `pnpm test:e2e`       | Passed after `pnpm exec playwright install chromium` in this environment (sandbox Playwright cache was missing). 1 landing-page smoke test.                |
+
+Git tracking: `.env.example` is tracked. `.env.local` is ignored (`.gitignore` `.env.*`) and is not in the index.
+
+**Next step:** Milestone 3 — Authentication. Do not start it until requested.

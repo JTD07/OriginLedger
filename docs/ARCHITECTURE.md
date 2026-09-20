@@ -84,13 +84,18 @@ Supabase Auth issues the session. The Next.js server reads cookies via the offic
 
 ## Data and RLS
 
-- Tables that store organization data include `organization_id`.
-- RLS policies require a membership row for that organization.
-- Role checks (owner, admin, operator, viewer) live in RLS and in service modules.
-- Origin events are insert-mostly. Updates that change historical payload are forbidden; supersede with a new row.
-- Generated database types are checked in; hand-written `any` row types are not.
+- Tables that store organization data include `organization_id`. Composite foreign keys keep lots, events, and documents inside the same organization as their parent product or lot.
+- RLS is enabled on every `public` application table. Client roles receive explicit GRANTs only (`supabase/config.toml` sets `auto_expose_new_tables = false`).
+- Helper predicates live in the unexposed `private` schema as `security definer` functions with a fixed `search_path`. Policies call `(select auth.uid())` and those helpers. They never read `user_metadata`.
+- Only `memberships.status = 'active'` grants tenant access. Invited, expired, and revoked memberships do not.
+- Owner, admin, and operator may mutate operational records. Viewers are read-only. Owner and admin manage members, invitations, and publish settings. Only the owner can delete an organization or read `subscriptions`.
+- Anonymous visitors may `SELECT` published lots and `is_publishable` events/documents. They have no GRANT on memberships, invitations, or subscriptions.
+- Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
+- `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
+- Generated-compatible database types are checked in at `src/types/database.ts`. Regenerate with `pnpm supabase:types` after schema changes.
+- Storage buckets and file upload policies are Milestone 6. The `documents` table stores metadata and `storage_path` only.
 
-## Payments
+## Environment variables
 
 Stripe Checkout or Customer Portal starts from the server. Webhooks land on a Route Handler that:
 
@@ -127,6 +132,9 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 
 - `src/app` — routes, layouts, Server Actions, Route Handlers
 - `src/env` — typed public/server environment parsing
+- `src/types` — checked-in database types
+- `supabase/migrations` — versioned schema and RLS
+- `supabase/tests` — pgTAP access tests
 - `src/server` — service modules, Zod schemas, Supabase/Stripe/Resend access (later milestones)
 - `src/components` — UI that does not own business rules
 - `e2e` — Playwright
@@ -199,3 +207,20 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Decision:** Parse environment variables with Zod. Put `NEXT_PUBLIC_*` in `src/env/public.ts`. Put secrets in `src/env/server.ts` behind `server-only`. Require `NEXT_PUBLIC_APP_URL` immediately. Keep unused service credentials optional until those milestones, and format-check them when present.
 - **Why:** Fail closed on missing app URL without forcing dummy Stripe/Supabase secrets into CI or Playwright production builds. Prevent accidental client bundling of service-role and webhook secrets.
 - **Consequences:** Later service milestones must tighten those variables to required when the matching production path is introduced. CI sets `NEXT_PUBLIC_APP_URL` to the smoke-test origin.
+
+### ADR-009: Local migrations as the schema source of truth
+
+- **Status:** Accepted
+- **Decision:** Version Postgres schema and RLS in `supabase/migrations`. Test policies with pgTAP via `supabase test db`. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Do not apply these migrations to a hosted production database from Milestone 2.
+- **Why:** RLS must deny cross-tenant access even if application code is wrong. Local Docker is the verification environment.
+- **Consequences:** Contributors need Docker to run `pnpm supabase:start` and `pnpm supabase:test`. App CI stays runnable without Docker; a separate `database` GitHub Actions job starts the local stack.
+
+### Milestone 2 implementation assumptions
+
+- Origin event `kind` values are the spec examples: `received`, `processed`, `transferred`, `documented`.
+- `is_publishable` on origin events and documents is the flag that allows anonymous reads of otherwise member-only timeline rows.
+- Membership `invited` / `expired` / `revoked` rows exist for history and do not grant access. Invitations are the pre-join email records.
+- Creating an organization as the authenticated user inserts an `owner` + `active` membership in a trigger.
+- Stripe customer and subscription identifiers live on `subscriptions` so a published organization row cannot leak billing IDs.
+- Lot publish/unpublish/archive is owner or admin. Operators may move `draft` to `active` and append events on `active` or `published` lots.
+- Document file bytes and Storage bucket policies wait for Milestone 6.
