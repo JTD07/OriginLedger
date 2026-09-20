@@ -13,12 +13,6 @@ function webServerEnv(): Record<string, string> {
   }
 
   env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? baseURL;
-  if (!env.NEXT_PUBLIC_SUPABASE_URL) {
-    env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
-  }
-  if (!env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
-  }
   return env;
 }
 

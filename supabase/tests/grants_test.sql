@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(34);
 
 select ok(
   not has_table_privilege('anon', 'public.memberships', 'select'),
@@ -77,6 +77,18 @@ select ok(
   'authenticated cannot delete verification_publications'
 );
 select ok(
+  not has_table_privilege('authenticated', 'public.projects', 'delete'),
+  'authenticated cannot delete projects'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.assets', 'delete'),
+  'authenticated cannot delete assets'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.assets', 'update'),
+  'authenticated cannot update assets'
+);
+select ok(
   not has_table_privilege('authenticated', 'public.subscriptions', 'insert,update,delete'),
   'authenticated cannot write subscriptions'
 );
@@ -105,6 +117,14 @@ select ok(
   has_table_privilege('service_role', 'public.origin_events', 'select,insert,update,delete'),
   'service_role retains full access to origin_events'
 );
+select ok(
+  has_table_privilege('service_role', 'public.projects', 'select,insert,update,delete'),
+  'service_role retains full access to projects'
+);
+select ok(
+  has_table_privilege('service_role', 'public.assets', 'select,insert,update,delete'),
+  'service_role retains full access to assets'
+);
 
 select isnt_empty(
   $$select 1 from pg_policies where schemaname = 'public' and tablename = 'organizations'$$,
@@ -117,6 +137,15 @@ select ok(
     where oid = 'public.organizations'::regclass
   ),
   'RLS is enabled on organizations'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.create_organization(text)', 'execute'),
+  'authenticated can execute create_organization'
+);
+select ok(
+  not has_function_privilege('anon', 'public.create_organization(text)', 'execute'),
+  'anon cannot execute create_organization'
 );
 
 select * from finish();

@@ -93,7 +93,7 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 - Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
 - `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
 - Generated-compatible database types are checked in at `src/types/database.ts`. Regenerate with `pnpm supabase:types` after schema changes.
-- Storage buckets and file upload policies are Milestone 6. The `documents` table stores metadata and `storage_path` only.
+- Private origin-record files live in the `origin-assets` bucket. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Lot-linked `documents` remain a later milestone.
 
 ## Environment variables
 
@@ -222,7 +222,14 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Status:** Accepted
 - **Decision:** Use `@supabase/ssr` browser and server clients. Refresh the session in `src/proxy.ts` with `getClaims()`. Protect `/app` in Proxy as an optimistic check and again in the `/app` layout. Sign-up, sign-in, sign-out, and password recovery are Server Actions with Zod validation. PKCE email links land on `/auth/confirm`.
 - **Why:** Server Components cannot write cookies; Proxy keeps refreshed tokens on the request and the browser. `getClaims()` verifies the JWT instead of trusting cookie contents.
-- **Consequences:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only and is unused on ordinary auth paths. Organization create/choose waits for Milestone 4.
+- **Consequences:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required. `SUPABASE_SERVICE_ROLE_KEY` stays server-only. Full organization invitations and role administration wait for Milestone 5.
+
+### ADR-011: Private signed uploads with trusted processing
+
+- **Status:** Accepted
+- **Decision:** Store origin-record files in a private `origin-assets` bucket. The Next.js server authorizes the user, generates a UUID object key, and issues a signed upload URL. After the client uploads, trusted server code downloads the object, verifies magic bytes, size, and SHA-256, then marks the asset `ready` or `processing_failed`. Preview uses a short-lived signed URL. Authenticated clients cannot UPDATE assets or set `ready`.
+- **Why:** Browser filenames and MIME types are untrusted. RLS still hides other tenants’ rows. Signed URLs avoid exposing the service-role key while keeping the bucket private.
+- **Consequences:** `SUPABASE_SERVICE_ROLE_KEY` is required for issuing upload/preview URLs and for processing. Allowed formats are PDF, JPEG, PNG, and WebP, 25 MB maximum, as documented in `docs/PRODUCT_SPEC.md`.
 
 ### Milestone 2 implementation assumptions
 
@@ -232,4 +239,4 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - Creating an organization as the authenticated user inserts an `owner` + `active` membership in a trigger.
 - Stripe customer and subscription identifiers live on `subscriptions` so a published organization row cannot leak billing IDs.
 - Lot publish/unpublish/archive is owner or admin. Operators may move `draft` to `active` and append events on `active` or `published` lots.
-- Document file bytes and Storage bucket policies wait for Milestone 6.
+- Lot-linked document bytes remain a later milestone. Project assets use the private `origin-assets` bucket introduced in Milestone 4.

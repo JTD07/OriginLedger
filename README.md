@@ -36,7 +36,7 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required now. Leave Stripe, Resend, Sentry, and `SUPABASE_SERVICE_ROLE_KEY` empty until those paths exist. Do not put real secrets in `.env.example` or commit `.env.local`.
+`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required now. Put `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` for signed uploads and processing; never prefix it with `NEXT_PUBLIC_`. Leave Stripe, Resend, and Sentry empty until those paths exist. Do not put real secrets in `.env.example` or commit `.env.local`.
 
 If `next build`, `next dev`, or `next start` reports `OriginLedger environment is invalid`, the named variable is missing or the wrong shape. The error does not print secret values.
 
@@ -53,6 +53,8 @@ pnpm supabase:stop
 ```
 
 `pnpm supabase:start` prints `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the service-role key. Put those values in `.env.local`. Keep the service-role key server-only. Local Auth email confirmations are disabled so sign-up can create a session immediately; password-reset mail is still captured by Inbucket.
+
+After sign-in, `/app` can create an organization and project, then upload a PDF, JPEG, PNG, or WebP (25 MB maximum) to private storage. Fixture notes are in `docs/TESTING_ASSETS.md`.
 
 Sign-in lives at `/sign-in`, sign-up at `/sign-up`, recovery at `/recover`, and the signed-in shell at `/app`. Email confirmation and recovery links use `/auth/confirm`.
 

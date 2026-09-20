@@ -16,6 +16,11 @@
 /test-results/
 /blob-report/
 /playwright/.cache/
+tmp-*.png
+tmp-*.jpg
+tmp-*.jpeg
+tmp-*.pdf
+tmp-*.webp
 
 # next.js
 /.next/
@@ -33,6 +38,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# debug probes — do not commit
+scripts/probe-org.mjs
 
 # env files — never commit secrets
 .env

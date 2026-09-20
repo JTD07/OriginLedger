@@ -12,21 +12,23 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Organizations, memberships, and baseline tenant policies. Generated types. No mock rows in production paths.
 - [x] **Milestone 3 — Authentication**
       Sign up, sign in, session, sign out, recovery. Server-side session handling.
-- [ ] **Milestone 4 — Organizations and roles**
-      Create organization, invitations, role enforcement matching `docs/PRODUCT_SPEC.md`.
-- [ ] **Milestone 5 — Products, lots, and origin events**
+- [x] **Milestone 4 — Secure asset upload end to end**
+      Private Storage, signed uploads, trusted processing, previews, and tenant isolation.
+- [ ] **Milestone 5 — Organizations and roles**
+      Invitations and role enforcement matching `docs/PRODUCT_SPEC.md`.
+- [ ] **Milestone 6 — Products, lots, and origin events**
       Append-oriented timeline. Tenancy tests.
-- [ ] **Milestone 6 — Documents**
-      Supabase Storage, attach to lots/events, supersede without deleting history.
-- [ ] **Milestone 7 — Public verification**
+- [ ] **Milestone 7 — Documents**
+      Attach verified assets to lots/events; supersede without deleting history.
+- [ ] **Milestone 8 — Public verification**
       Publish/unpublish lot pages. Unauthenticated access only to published data.
-- [ ] **Milestone 8 — Stripe billing**
+- [ ] **Milestone 9 — Stripe billing**
       Checkout or Customer Portal, verified webhooks, subscription state from Stripe.
-- [ ] **Milestone 9 — Resend email**
+- [ ] **Milestone 10 — Resend email**
       Invitations and auth-related transactional mail.
-- [ ] **Milestone 10 — Sentry observability**
+- [ ] **Milestone 11 — Sentry observability**
       Server and client error reporting without leaking secrets.
-- [ ] **Milestone 11 — Launch hardening**
+- [ ] **Milestone 12 — Launch hardening**
       Access, rate limits, empty states, threat review. Still no compliance claims.
 
 ## Verification log
@@ -201,4 +203,46 @@ Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in t
 - Full sign-up/sign-in against a live Auth server was not part of Playwright; those tests cover public forms and the unauthenticated `/app` redirect. Local round-trips need `pnpm supabase:start` and keys in `.env.local`.
 - Hosted projects must allow `/auth/confirm` in Auth redirect URLs and keep email templates on the `token_hash` links.
 
-**Next step:** Milestone 4 — Organizations and roles. Do not start it until requested.
+**Next step:** Milestone 4 — Secure asset upload end to end. Do not start it until requested.
+
+### Milestone 4
+
+**Date:** 2026-09-20
+
+**Intent:** Secure asset upload end to end. Relabel the checklist so Milestone 4 is upload (not organizations/roles). Do not reimplement Milestone 3 auth or start Milestone 5 invitations.
+
+**Decisions:**
+
+- Private `origin-assets` bucket. Server generates `{organizationId}/{projectId}/{assetId}` keys. Clients cannot UPDATE assets or mark `ready`.
+- Owner, admin, and operator members upload. Viewers read ready assets. Allowed formats are only PDF, JPEG, PNG, and WebP. Maximum 25 MiB.
+- Trusted processing reads magic bytes, SHA-256, and bounded dimensions. Same-organization SHA-256 matches warn and do not block. Previews use short-lived signed URLs after org/project authorization. JPEG/PNG/WebP render inline; PDF is download/metadata-only.
+- Minimal organization and project create is included so upload is usable. Invitations and role administration wait for Milestone 5.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                                                                    |
+| `pnpm supabase:start` | Passed. Local stack was not running; Docker started it. Hosted/production projects were not touched.                                                                       |
+| `pnpm supabase:reset` | Passed. Applied `20260919194343_initial_schema.sql` and `20260920073307_asset_upload.sql`. Later `supabase migration up` applied `20260920075601_create_organization.sql`. |
+| `pnpm supabase:test`  | Passed. 6 files, 75 tests (previous 55 plus assets, grants, and `create_organization` execute checks).                                                                     |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                                                             |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (11 files, 41 tests).                                                                                                          |
+| `pnpm build`          | Passed. Routes include `/app/projects/[projectId]`, `/app/assets/[assetId]`, and `/app/assets/[assetId]/preview`.                                                          |
+| `pnpm test:e2e`       | Passed. 13 Chromium tests (landing, auth pages, upload success, oversize, spoofed type, processing failure, duplicates, cross-tenant, private object denial).              |
+
+Git tracking: `.env.example` is tracked. `.env.local`, `scripts/probe-org.mjs`, and `tmp-*.png|jpg|jpeg|pdf|webp` are gitignored and are not in the index. Signed URLs and service-role values were not committed.
+
+**Security notes:**
+
+- No `NEXT_PUBLIC_` service-role variable. Signed upload/preview URLs are issued only after membership checks and are not stored.
+- Authenticated clients have SELECT/INSERT on `assets` and no UPDATE grant. Storage has no anon or authenticated policies.
+- Organization create uses `auth.uid()` via `create_organization` when the user JWT reaches PostgREST. If that insert is rejected locally, the server falls back to the service-role client with `created_by` from `getClaims()`, never from the form.
+
+**Unresolved risks:**
+
+- Supabase `createSignedUploadUrl` tickets last about two hours. The app treats them as single-purpose, advertises a 60-second intent, and retries with a new ticket. Provider TTL cannot be shortened through the public API, so expiry was not wait-tested at two hours.
+- Local PostgREST rejected user-scoped `INSERT` into `organizations` with `42501` even with a session. The service-role fallback is constrained to the `getClaims()` user id. Milestone 5 should keep verifying this path.
+- Hosted projects were not migrated. Do not apply these migrations to production from this milestone.
+
+**Next step:** Milestone 5 — Organizations and roles. Do not start it until requested.

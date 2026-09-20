@@ -44,7 +44,7 @@ Every business record belongs to exactly one organization. Queries and mutations
 | -------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
 | Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization                       |
 | Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings |
-| Operator       | Organization    | Create and update products, lots, events, and documents; cannot manage billing or members                 |
+| Operator       | Organization    | Create and update products, lots, events, documents, and project assets; cannot manage billing or members |
 | Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                |
 | Public visitor | Unauthenticated | View the marketing landing page and any lot verification page the organization has published              |
 
@@ -57,6 +57,8 @@ Platform super-admin is out of scope for the MVP.
 - **Organization** — tenant. Has a name, billing customer, and memberships.
 - **Membership** — user + organization + role + status.
 - **Invitation** — email invite to join an organization with a proposed role.
+- **Project** — an organization-owned documentation workspace. Members upload origin-record files to a project they are authorized for.
+- **Asset** — a private file stored for a project after server-side verification. The browser filename, extension, and MIME type are untrusted.
 - **Product** — a named good the organization tracks (SKU or equivalent).
 - **Lot** — a specific batch of a product.
 - **Origin event** — an append-only record on a lot (for example received, processed, transferred, documented).
@@ -76,14 +78,16 @@ Authenticated:
 
 4. Organization create / choose organization
 5. Home dashboard (counts and recent lots; no mock metrics)
-6. Products list and product detail
-7. Lots list and lot detail (timeline of origin events)
-8. Event create form
-9. Document upload and document detail
-10. Publish / unpublish verification for a lot
-11. Team: members, invitations, role changes
-12. Organization settings
-13. Billing (Stripe Customer Portal or Checkout; no fabricated invoices)
+6. Projects list and project detail
+7. Secure asset upload and asset detail
+8. Products list and product detail
+9. Lots list and lot detail (timeline of origin events)
+10. Event create form
+11. Document upload and document detail
+12. Publish / unpublish verification for a lot
+13. Team: members, invitations, role changes
+14. Organization settings
+15. Billing (Stripe Customer Portal or Checkout; no fabricated invoices)
 
 Empty, loading, forbidden, and not-found states are required for each authenticated list and detail screen.
 
@@ -137,6 +141,24 @@ attached --> superseded
 - `attached`: linked to a lot or event.
 - `superseded`: replaced by a newer document; prior file is retained for history.
 
+### Asset
+
+```text
+pending_upload --> uploaded
+uploaded --> processing
+processing --> ready
+processing --> processing_failed
+pending_upload --> processing_failed
+processing_failed --> pending_upload
+processing_failed --> processing
+```
+
+- `pending_upload`: server created the row and storage key; a short-lived signed upload URL may be issued.
+- `uploaded`: bytes exist at the server-owned key and are waiting for trusted processing.
+- `processing`: server is hashing and verifying the stored object.
+- `ready`: MIME type, size, SHA-256, and safe metadata were verified from bytes. The client cannot set this state.
+- `processing_failed`: verification failed. The exact server-owned object is removed or quarantined. Failure codes are suitable for support and do not include secrets.
+
 ### Invitation
 
 ```text
@@ -164,6 +186,25 @@ Access policy for `past_due` and `canceled` is defined in architecture and billi
 - Origin events are append-oriented. Corrections are new events.
 - Public verification pages show only fields and documents the organization marked as publishable.
 - The UI and any export must use the phrase **supports documentation and transparency workflows** rather than certify, guarantee, or comply.
+
+## Asset upload (MVP)
+
+Owner, admin, and operator members may upload files to a project in their organization. Viewers may inspect ready assets and cannot upload.
+
+Maximum size is **25 MB** (26,214,400 bytes). The server refuses to issue an upload URL when the declared size exceeds that limit, and it verifies the stored object size again after upload.
+
+Allowed formats are only:
+
+| Format | Verified MIME type | Notes                                                  |
+| ------ | ------------------ | ------------------------------------------------------ |
+| PDF    | `application/pdf`  | Metadata-only or forced download. Not rendered inline. |
+| JPEG   | `image/jpeg`       | Inline preview after byte-level verification.          |
+| PNG    | `image/png`        | Inline preview after byte-level verification.          |
+| WebP   | `image/webp`       | Inline preview after byte-level verification.          |
+
+The browser filename, extension, MIME type, and other client metadata are untrusted. Trusted processing reads magic bytes from the stored object, computes SHA-256, and extracts bounded non-executing metadata. Matching SHA-256 values inside the same organization produce a warning and do not block the new upload. Duplicate information from another organization is never shown.
+
+Objects stay in a private Storage bucket. Preview uses a short-lived signed URL issued only after organization and project authorization. Signed URLs are not stored.
 
 ## Success criteria for the MVP
 

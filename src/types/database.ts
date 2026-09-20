@@ -9,6 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      assets: {
+        Row: {
+          byte_size: number | null;
+          client_filename: string | null;
+          created_at: string;
+          created_by: string;
+          declared_byte_size: number | null;
+          declared_mime_type: string | null;
+          failure_code: string | null;
+          id: string;
+          metadata: Json;
+          organization_id: string;
+          processed_at: string | null;
+          project_id: string;
+          sha256: string | null;
+          status: Database["public"]["Enums"]["asset_status"];
+          storage_key: string;
+          updated_at: string;
+          verified_mime_type: string | null;
+        };
+        Insert: {
+          byte_size?: number | null;
+          client_filename?: string | null;
+          created_at?: string;
+          created_by: string;
+          declared_byte_size?: number | null;
+          declared_mime_type?: string | null;
+          failure_code?: string | null;
+          id?: string;
+          metadata?: Json;
+          organization_id: string;
+          processed_at?: string | null;
+          project_id: string;
+          sha256?: string | null;
+          status?: Database["public"]["Enums"]["asset_status"];
+          storage_key: string;
+          updated_at?: string;
+          verified_mime_type?: string | null;
+        };
+        Update: {
+          byte_size?: number | null;
+          client_filename?: string | null;
+          created_at?: string;
+          created_by?: string;
+          declared_byte_size?: number | null;
+          declared_mime_type?: string | null;
+          failure_code?: string | null;
+          id?: string;
+          metadata?: Json;
+          organization_id?: string;
+          processed_at?: string | null;
+          project_id?: string;
+          sha256?: string | null;
+          status?: Database["public"]["Enums"]["asset_status"];
+          storage_key?: string;
+          updated_at?: string;
+          verified_mime_type?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "assets_project_org_fkey";
+            columns: ["project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
       documents: {
         Row: {
           byte_size: number | null;
@@ -324,6 +392,41 @@ export type Database = {
           },
         ];
       };
+      projects: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          name: string;
+          organization_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          name: string;
+          organization_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          name?: string;
+          organization_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       subscriptions: {
         Row: {
           created_at: string;
@@ -414,9 +517,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_organization: { Args: { p_name: string }; Returns: string };
     };
     Enums: {
+      asset_status:
+        | "pending_upload"
+        | "uploaded"
+        | "processing"
+        | "ready"
+        | "processing_failed";
       document_status: "uploaded" | "attached" | "superseded";
       invitation_status: "pending" | "accepted" | "expired" | "revoked";
       lot_status: "draft" | "active" | "published" | "archived";
@@ -553,6 +662,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      asset_status: [
+        "pending_upload",
+        "uploaded",
+        "processing",
+        "ready",
+        "processing_failed",
+      ],
       document_status: ["uploaded", "attached", "superseded"],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       lot_status: ["draft", "active", "published", "archived"],

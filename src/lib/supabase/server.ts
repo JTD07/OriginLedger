@@ -7,7 +7,7 @@ export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
   const { url, anonKey } = getSupabasePublicConfig();
 
-  return createServerClient<Database>(url, anonKey, {
+  const client = createServerClient<Database>(url, anonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -23,4 +23,9 @@ export async function createServerSupabaseClient() {
       },
     },
   });
+
+  // skipAutoInitialize is set by @supabase/ssr. Load the cookie session
+  // before PostgREST calls so RLS sees auth.uid() instead of the anon role.
+  await client.auth.getSession();
+  return client;
 }
