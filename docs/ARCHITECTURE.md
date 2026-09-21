@@ -90,7 +90,7 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 - RLS is enabled on every `public` application table. Client roles receive explicit GRANTs only (`supabase/config.toml` sets `auto_expose_new_tables = false`).
 - Helper predicates live in the unexposed `private` schema as `security definer` functions with a fixed `search_path`. Policies call `(select auth.uid())` and those helpers. They never read `user_metadata`.
 - Only `memberships.status = 'active'` grants tenant access. Invited, expired, and revoked memberships do not.
-- Owner, admin, and operator may mutate operational records. Viewers are read-only. Owner and admin manage members, invitations, and publish settings. Only the owner can delete an organization or read `subscriptions`.
+- Owner, admin, and operator may mutate operational records. Viewers are read-only. Owner and admin manage members, invitations, publish settings, and billing. Only the owner can delete an organization. Owner and admin may `SELECT` `subscriptions`. `webhook_events` is service-role only.
 - Anonymous visitors may `SELECT` published lots and `is_publishable` events/documents. They have no GRANT on memberships, invitations, or subscriptions.
 - Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
 - `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
@@ -99,13 +99,15 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 
 ## Environment variables
 
-Stripe Checkout or Customer Portal starts from the server. Webhooks land on a Route Handler that:
+Stripe Checkout or Customer Portal starts from authenticated server code. The client may submit a stable plan slug (`starter`, `agency`, `agency_plus`). The server resolves the Stripe price ID from allowlisted environment variables. Webhooks land on `/api/stripe/webhook`, which:
 
-1. Verifies the signature with `STRIPE_WEBHOOK_SECRET`.
-2. Parses the event with Zod or Stripe’s typed helpers plus explicit field checks.
-3. Updates the organization subscription in a narrowly scoped write.
+1. Reads the raw request body before JSON parsing.
+2. Verifies the Stripe signature with `STRIPE_WEBHOOK_SECRET` and the official SDK (`2026-08-26.dahlia`).
+3. Persists `stripe_event_id` on `webhook_events` (unique) and tracks `received` / `processed` / `failed`.
+4. Retrieves the current Stripe subscription for subscription and invoice events instead of blindly applying an older payload.
+5. Writes trusted billing columns on `subscriptions` in one `sync_organization_subscription` call. Stale Stripe timestamps do not regress newer local state.
 
-The UI renders Stripe-backed status only.
+Paid entitlements are computed from that local row plus `src/server/billing/plans.ts`. Checkout success is a processing state until a verified webhook confirms the subscription. Cancellation never deletes tenant data. Local CLI setup is documented in `docs/STRIPE_TEST_MODE.md`.
 
 ## Email
 
@@ -124,7 +126,7 @@ Typed parsing lives in `src/env`. Zod schemas validate values; empty strings are
 | `src/env/public.ts` | Server or Client Components               | `NEXT_PUBLIC_*` only                       |
 | `src/env/server.ts` | Server-only code (`import "server-only"`) | Secret keys and other non-public variables |
 
-`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required at build and server start. Remaining service credentials (Stripe, Resend, Sentry, and the Supabase service-role key) are optional until their milestones, but if set they must match the expected format. Validation errors name the variable and the rule. They never print the invalid value.
+Remaining service credentials (Resend, Sentry) are optional until those milestones, but if set they must match the expected format. Stripe secret, webhook, and price variables are optional at parse time so CI can build without test-mode keys; Checkout, Portal, and webhook handling fail closed when they are missing, duplicated, or unknown. Validation errors name the variable and the rule. They never print the invalid value.
 
 `next.config.ts` validates public variables during `next build` / `next dev`. `src/instrumentation.ts` validates public and server variables when the Node.js server starts.
 
@@ -175,7 +177,7 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Status:** Accepted
 - **Decision:** Stripe Checkout/Customer Portal plus verified webhooks.
 - **Why:** Avoid storing card data and avoid inventing subscription state.
-- **Consequences:** Local and CI billing tests need Stripe test-mode keys when that milestone lands; until then, billing code is absent.
+- **Consequences:** Local billing tests mock the Stripe SDK and use signed test payloads. Live test-mode keys stay in `.env.local`. See `docs/STRIPE_TEST_MODE.md`.
 
 ### ADR-004: Resend for transactional email
 
@@ -320,3 +322,18 @@ Rate limiting:
 - Authenticated and anonymous clients cannot execute the limiter or read the table.
 
 Share-page headers: `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, plus matching robots/referrer meta tags. Title and description stay `Shared document` / `A documentation packet is available through a private link` for valid and invalid tokens.
+
+### ADR-015: Server-owned plan catalog and reconciled Stripe subscriptions
+
+- **Status:** Accepted
+- **Decision:** Starter, Agency, and Agency Plus limits live in `src/server/billing/plans.ts`. Stripe price IDs come from server-only environment variables. Hosted Checkout and the Billing Portal are created only after owner/admin authorization. Webhooks verify the raw body, persist event IDs, retrieve current Stripe objects, and refuse stale timestamps. Member seats and monthly files are enforced in application code and in Postgres triggers that lock the organization subscription row.
+- **Why:** Clients cannot be trusted with price IDs, customer IDs, or paid status. Duplicate or out-of-order Stripe events must not grant or revoke access incorrectly. Existing records above a downgraded limit must remain readable.
+- **Consequences:** CI can build without Stripe keys. Checkout, Portal, and webhook routes fail closed when configuration is missing. `trial_will_end` is not handled until transactional email exists. Public lot verification remains a later milestone.
+
+### Milestone 8 billing
+
+- API version: `2026-08-26.dahlia`.
+- Seat consumers: `memberships.status in (active, invited)` plus `invitations.status = pending`.
+- Monthly files: assets in the organization with `created_at >= current_period_start` (or UTC month start) and `status <> processing_failed`.
+- Grace: 3 days after `past_due_since`. After grace, unpaid limits apply even if Stripe has not sent another event.
+- Data preservation: Stripe cancellation never deletes organizations, assets, packets, or history.

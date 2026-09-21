@@ -43,6 +43,15 @@ values (
 );
 
 reset role;
+update public.subscriptions
+set
+  status = 'active',
+  entitled_member_limit = 50,
+  entitled_monthly_asset_limit = 1000
+where organization_id in (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+);
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 select set_config(
   'request.jwt.claims',

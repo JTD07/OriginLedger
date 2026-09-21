@@ -46,6 +46,19 @@ export default async function AppHomePage() {
           ) : (
             <p>You can view projects in this organization.</p>
           )}
+          {access?.canBill ? (
+            <p>
+              <Link className="underline" href="/app/billing">
+                Billing
+              </Link>
+            </p>
+          ) : (
+            <p>
+              <Link className="underline" href="/app/billing">
+                View plan usage
+              </Link>
+            </p>
+          )}
         </section>
       ) : (
         <section className="flex flex-col gap-3" aria-labelledby="create-org">

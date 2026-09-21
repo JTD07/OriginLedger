@@ -1,5 +1,5 @@
 begin;
-select plan(68);
+select plan(75);
 
 select ok(
   not has_table_privilege('anon', 'public.memberships', 'select'),
@@ -99,6 +99,46 @@ select ok(
 select ok(
   has_table_privilege('authenticated', 'public.subscriptions', 'select'),
   'authenticated has select grant on subscriptions (owner policy still applies)'
+);
+select ok(
+  not has_table_privilege('anon', 'public.webhook_events', 'select'),
+  'anon has no select grant on webhook_events'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.webhook_events', 'select'),
+  'authenticated has no select grant on webhook_events'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.webhook_events', 'insert,update,delete'),
+  'authenticated cannot write webhook_events'
+);
+select ok(
+  has_table_privilege('service_role', 'public.webhook_events', 'select,insert,update,delete'),
+  'service_role retains full access to webhook_events'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.claim_webhook_event(text, text, timestamp with time zone)',
+    'execute'
+  ),
+  'authenticated cannot execute claim_webhook_event'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.complete_webhook_event(text, boolean, text)',
+    'execute'
+  ),
+  'authenticated cannot execute complete_webhook_event'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.claim_webhook_event(text, text, timestamp with time zone)',
+    'execute'
+  ),
+  'service_role can execute claim_webhook_event'
 );
 
 select ok(

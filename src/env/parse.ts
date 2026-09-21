@@ -13,6 +13,9 @@ export type ServerEnv = {
   supabaseServiceRoleKey: string | undefined;
   stripeSecretKey: string | undefined;
   stripeWebhookSecret: string | undefined;
+  stripePriceStarter: string | undefined;
+  stripePriceAgency: string | undefined;
+  stripePriceAgencyPlus: string | undefined;
   resendApiKey: string | undefined;
   resendFromEmail: string | undefined;
   sentryDsn: string | undefined;
@@ -46,6 +49,9 @@ export function parseServerEnv(source: EnvSource): ServerEnv {
     supabaseServiceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,
     stripeSecretKey: result.data.STRIPE_SECRET_KEY,
     stripeWebhookSecret: result.data.STRIPE_WEBHOOK_SECRET,
+    stripePriceStarter: result.data.STRIPE_PRICE_STARTER,
+    stripePriceAgency: result.data.STRIPE_PRICE_AGENCY,
+    stripePriceAgencyPlus: result.data.STRIPE_PRICE_AGENCY_PLUS,
     resendApiKey: result.data.RESEND_API_KEY,
     resendFromEmail: result.data.RESEND_FROM_EMAIL,
     sentryDsn: result.data.SENTRY_DSN,

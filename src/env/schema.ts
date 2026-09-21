@@ -12,6 +12,9 @@ export const SERVER_ONLY_ENV_KEYS = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_PRICE_STARTER",
+  "STRIPE_PRICE_AGENCY",
+  "STRIPE_PRICE_AGENCY_PLUS",
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL",
   "SENTRY_DSN",
@@ -90,10 +93,33 @@ export const publicEnvSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: optionalHttpUrl,
 });
 
+const optionalStripeSecret = z.preprocess(
+  emptyToUndefined,
+  z
+    .string()
+    .regex(/^(sk_|rk_)/, {
+      error: 'must start with "sk_" or "rk_" when set',
+    })
+    .optional(),
+);
+
+const optionalPriceId = z.preprocess(
+  emptyToUndefined,
+  z
+    .string()
+    .startsWith("price_", {
+      error: 'must start with "price_" when set',
+    })
+    .optional(),
+);
+
 export const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: optionalNonEmptyString,
-  STRIPE_SECRET_KEY: optionalPrefixedString("sk_"),
+  STRIPE_SECRET_KEY: optionalStripeSecret,
   STRIPE_WEBHOOK_SECRET: optionalPrefixedString("whsec_"),
+  STRIPE_PRICE_STARTER: optionalPriceId,
+  STRIPE_PRICE_AGENCY: optionalPriceId,
+  STRIPE_PRICE_AGENCY_PLUS: optionalPriceId,
   RESEND_API_KEY: optionalPrefixedString("re_"),
   RESEND_FROM_EMAIL: optionalEmail,
   SENTRY_DSN: optionalHttpUrl,

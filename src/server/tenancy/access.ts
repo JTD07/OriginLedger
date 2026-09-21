@@ -5,6 +5,7 @@ import type { Database } from "@/types/database";
 
 const MUTATING_ROLES = ["owner", "admin", "operator"] as const;
 const REVIEWING_ROLES = ["owner", "admin", "reviewer"] as const;
+const BILLING_ROLES = ["owner", "admin"] as const;
 
 export type MembershipRole = Database["public"]["Enums"]["membership_role"];
 
@@ -13,6 +14,7 @@ export type OrgAccess = {
   role: MembershipRole;
   canMutate: boolean;
   canReview: boolean;
+  canBill: boolean;
 };
 
 export async function getOrgAccess(
@@ -40,6 +42,9 @@ export async function getOrgAccess(
     ),
     canReview: REVIEWING_ROLES.includes(
       data.role as (typeof REVIEWING_ROLES)[number],
+    ),
+    canBill: BILLING_ROLES.includes(
+      data.role as (typeof BILLING_ROLES)[number],
     ),
   };
 }

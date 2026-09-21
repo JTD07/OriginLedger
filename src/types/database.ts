@@ -958,33 +958,78 @@ export type Database = {
       };
       subscriptions: {
         Row: {
+          cancel_at: string | null;
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          checkout_pending_at: string | null;
           created_at: string;
           current_period_end: string | null;
+          current_period_start: string | null;
+          ended_at: string | null;
+          entitled_member_limit: number;
+          entitled_monthly_asset_limit: number;
           id: string;
+          last_synced_at: string | null;
           organization_id: string;
+          past_due_since: string | null;
+          plan: Database["public"]["Enums"]["billing_plan"] | null;
           status: Database["public"]["Enums"]["subscription_status"];
           stripe_customer_id: string | null;
+          stripe_event_created_at: string | null;
+          stripe_status: string | null;
           stripe_subscription_id: string | null;
+          stripe_subscription_updated_at: string | null;
+          trial_end: string | null;
           updated_at: string;
         };
         Insert: {
+          cancel_at?: string | null;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_pending_at?: string | null;
           created_at?: string;
           current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          entitled_member_limit?: number;
+          entitled_monthly_asset_limit?: number;
           id?: string;
+          last_synced_at?: string | null;
           organization_id: string;
+          past_due_since?: string | null;
+          plan?: Database["public"]["Enums"]["billing_plan"] | null;
           status?: Database["public"]["Enums"]["subscription_status"];
           stripe_customer_id?: string | null;
+          stripe_event_created_at?: string | null;
+          stripe_status?: string | null;
           stripe_subscription_id?: string | null;
+          stripe_subscription_updated_at?: string | null;
+          trial_end?: string | null;
           updated_at?: string;
         };
         Update: {
+          cancel_at?: string | null;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_pending_at?: string | null;
           created_at?: string;
           current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          entitled_member_limit?: number;
+          entitled_monthly_asset_limit?: number;
           id?: string;
+          last_synced_at?: string | null;
           organization_id?: string;
+          past_due_since?: string | null;
+          plan?: Database["public"]["Enums"]["billing_plan"] | null;
           status?: Database["public"]["Enums"]["subscription_status"];
           stripe_customer_id?: string | null;
+          stripe_event_created_at?: string | null;
+          stripe_status?: string | null;
           stripe_subscription_id?: string | null;
+          stripe_subscription_updated_at?: string | null;
+          trial_end?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -1041,6 +1086,39 @@ export type Database = {
           },
         ];
       };
+      webhook_events: {
+        Row: {
+          event_type: string;
+          id: string;
+          last_error: string | null;
+          processed_at: string | null;
+          processing_status: Database["public"]["Enums"]["webhook_processing_status"];
+          received_at: string;
+          stripe_created_at: string | null;
+          stripe_event_id: string;
+        };
+        Insert: {
+          event_type: string;
+          id?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          processing_status?: Database["public"]["Enums"]["webhook_processing_status"];
+          received_at?: string;
+          stripe_created_at?: string | null;
+          stripe_event_id: string;
+        };
+        Update: {
+          event_type?: string;
+          id?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          processing_status?: Database["public"]["Enums"]["webhook_processing_status"];
+          received_at?: string;
+          stripe_created_at?: string | null;
+          stripe_event_id?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1055,6 +1133,18 @@ export type Database = {
           p_notes: string;
         };
         Returns: Json;
+      };
+      claim_webhook_event: {
+        Args: {
+          p_event_type: string;
+          p_stripe_created_at: string;
+          p_stripe_event_id: string;
+        };
+        Returns: Json;
+      };
+      complete_webhook_event: {
+        Args: { p_error: string; p_ok: boolean; p_stripe_event_id: string };
+        Returns: undefined;
       };
       consume_share_rate_limit: {
         Args: { p_key_hash: string; p_max: number; p_window_seconds: number };
@@ -1095,6 +1185,34 @@ export type Database = {
         Returns: Record<string, unknown>[];
       };
       dblink_is_busy: { Args: { "": string }; Returns: number };
+      set_checkout_pending: {
+        Args: { p_organization_id: string; p_stripe_customer_id: string };
+        Returns: undefined;
+      };
+      sync_organization_subscription: {
+        Args: {
+          p_cancel_at: string;
+          p_cancel_at_period_end: boolean;
+          p_canceled_at: string;
+          p_clear_checkout_pending: boolean;
+          p_current_period_end: string;
+          p_current_period_start: string;
+          p_ended_at: string;
+          p_entitled_member_limit: number;
+          p_entitled_monthly_asset_limit: number;
+          p_organization_id: string;
+          p_past_due_since: string;
+          p_plan: Database["public"]["Enums"]["billing_plan"];
+          p_status: Database["public"]["Enums"]["subscription_status"];
+          p_stripe_customer_id: string;
+          p_stripe_event_created_at: string;
+          p_stripe_status: string;
+          p_stripe_subscription_id: string;
+          p_stripe_subscription_updated_at: string;
+          p_trial_end: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       assessment_status: "current" | "superseded" | "invalidated";
@@ -1113,7 +1231,11 @@ export type Database = {
         | "declaration_reviewed"
         | "evidence_packet_generated"
         | "share_link_created"
-        | "share_link_revoked";
+        | "share_link_revoked"
+        | "billing_checkout_started"
+        | "billing_portal_opened"
+        | "billing_subscription_synced";
+      billing_plan: "starter" | "agency" | "agency_plus";
       declaration_version_status:
         | "draft"
         | "pending_review"
@@ -1137,7 +1259,16 @@ export type Database = {
       origin_event_status: "recorded" | "superseded";
       review_decision: "accepted" | "returned" | "rejected";
       share_link_status: "active" | "revoked";
-      subscription_status: "incomplete" | "active" | "past_due" | "canceled";
+      subscription_status:
+        | "incomplete"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "trialing"
+        | "incomplete_expired"
+        | "unpaid"
+        | "paused";
+      webhook_processing_status: "received" | "processed" | "failed";
     };
     CompositeTypes: {
       dblink_pkey_results: {
@@ -1286,7 +1417,11 @@ export const Constants = {
         "evidence_packet_generated",
         "share_link_created",
         "share_link_revoked",
+        "billing_checkout_started",
+        "billing_portal_opened",
+        "billing_subscription_synced",
       ],
+      billing_plan: ["starter", "agency", "agency_plus"],
       declaration_version_status: [
         "draft",
         "pending_review",
@@ -1311,7 +1446,17 @@ export const Constants = {
       origin_event_status: ["recorded", "superseded"],
       review_decision: ["accepted", "returned", "rejected"],
       share_link_status: ["active", "revoked"],
-      subscription_status: ["incomplete", "active", "past_due", "canceled"],
+      subscription_status: [
+        "incomplete",
+        "active",
+        "past_due",
+        "canceled",
+        "trialing",
+        "incomplete_expired",
+        "unpaid",
+        "paused",
+      ],
+      webhook_processing_status: ["received", "processed", "failed"],
     },
   },
 } as const;

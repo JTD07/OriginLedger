@@ -135,6 +135,9 @@ describe("parseServerEnv", () => {
       supabaseServiceRoleKey: undefined,
       stripeSecretKey: undefined,
       stripeWebhookSecret: undefined,
+      stripePriceStarter: undefined,
+      stripePriceAgency: undefined,
+      stripePriceAgencyPlus: undefined,
       resendApiKey: undefined,
       resendFromEmail: undefined,
       sentryDsn: undefined,
@@ -147,6 +150,9 @@ describe("parseServerEnv", () => {
       SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
       STRIPE_SECRET_KEY: "sk_test_placeholder",
       STRIPE_WEBHOOK_SECRET: "whsec_placeholder",
+      STRIPE_PRICE_STARTER: "price_starter",
+      STRIPE_PRICE_AGENCY: "price_agency",
+      STRIPE_PRICE_AGENCY_PLUS: "price_agency_plus",
       RESEND_API_KEY: "re_placeholder",
       RESEND_FROM_EMAIL: "alerts@example.com",
       SENTRY_DSN: "https://example@o0.ingest.sentry.io/0",
@@ -154,7 +160,22 @@ describe("parseServerEnv", () => {
     });
 
     expect(env.stripeSecretKey).toBe("sk_test_placeholder");
+    expect(env.stripePriceAgency).toBe("price_agency");
     expect(env.resendFromEmail).toBe("alerts@example.com");
+  });
+
+  test("rejects an invalid price ID without echoing it", () => {
+    const leaked = "not-a-price";
+    try {
+      parseServerEnv({ STRIPE_PRICE_STARTER: leaked });
+      throw new Error("expected parseServerEnv to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(EnvValidationError);
+      const message = error instanceof EnvValidationError ? error.message : "";
+      expect(message).toContain("STRIPE_PRICE_STARTER");
+      expect(message).toContain('must start with "price_" when set');
+      expect(message).not.toContain(leaked);
+    }
   });
 
   test("rejects an invalid secret without echoing the value", () => {
@@ -167,7 +188,7 @@ describe("parseServerEnv", () => {
       expect(error).toBeInstanceOf(EnvValidationError);
       const message = error instanceof EnvValidationError ? error.message : "";
       expect(message).toContain("STRIPE_SECRET_KEY");
-      expect(message).toContain('must start with "sk_" when set');
+      expect(message).toContain('must start with "sk_" or "rk_" when set');
       expect(message).not.toContain(leaked);
     }
   });

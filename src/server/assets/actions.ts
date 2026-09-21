@@ -110,10 +110,15 @@ export async function createUploadSessionAction(input: unknown): Promise<
   });
 
   if (!result.ok) {
+    if (result.code === "plan_limit" && result.message) {
+      return { ok: false, message: result.message };
+    }
     const messages: Record<string, string> = {
       too_large: "Files must be 25 MB or smaller.",
       unauthorized: "You cannot upload to that project.",
       not_found: "That project is not available.",
+      plan_limit:
+        "This organization has reached its monthly file limit. Upgrade to upload another file.",
     };
     return {
       ok: false,

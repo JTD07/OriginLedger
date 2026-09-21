@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { getOrganizationEntitlements } from "@/server/billing/service";
 import { getOrgAccess } from "@/server/tenancy/access";
 import {
   MAX_ASSET_BYTES,
@@ -172,7 +173,8 @@ export async function createUploadSession(input: {
   clientFilename: string | null;
   existingAssetId?: string;
 }): Promise<
-  { ok: true; session: UploadSession } | { ok: false; code: AssetFailureCode }
+  | { ok: true; session: UploadSession }
+  | { ok: false; code: AssetFailureCode; message?: string }
 > {
   if (declaredUploadSizeError(input.declaredByteSize)) {
     return { ok: false, code: "too_large" };
@@ -190,6 +192,27 @@ export async function createUploadSession(input: {
   );
   if (!access?.canMutate) {
     return { ok: false, code: "unauthorized" };
+  }
+
+  if (!input.existingAssetId) {
+    const entitled = await getOrganizationEntitlements({
+      userClient: input.userClient,
+      serviceClient: input.serviceClient,
+      userId: input.userId,
+      organizationId: project.organization_id,
+    });
+    if (!entitled.ok) {
+      return { ok: false, code: "unauthorized" };
+    }
+    if (!entitled.entitlements.canCreateAsset) {
+      return {
+        ok: false,
+        code: "plan_limit",
+        message:
+          entitled.entitlements.upgradeMessage ??
+          "This organization has reached its monthly file limit.",
+      };
+    }
   }
 
   const filename = sanitizeClientFilename(input.clientFilename);
@@ -235,6 +258,22 @@ export async function createUploadSession(input: {
       .select("*")
       .single();
     if (error || !data) {
+      if (error?.message?.includes("plan_limit_assets")) {
+        const entitled = await getOrganizationEntitlements({
+          userClient: input.userClient,
+          serviceClient: input.serviceClient,
+          userId: input.userId,
+          organizationId: project.organization_id,
+        });
+        return {
+          ok: false,
+          code: "plan_limit",
+          message:
+            entitled.ok && entitled.entitlements.upgradeMessage
+              ? entitled.entitlements.upgradeMessage
+              : "This organization has reached its monthly file limit.",
+        };
+      }
       return { ok: false, code: "unauthorized" };
     }
     asset = data;

@@ -48,6 +48,11 @@ scripts/probe-org.mjs
 .env.*
 !.env.example
 
+# Stripe CLI artifacts
+.stripe-cli/
+stripe-debug.log
+
+
 # vercel
 .vercel
 

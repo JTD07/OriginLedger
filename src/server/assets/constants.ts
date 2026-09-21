@@ -36,7 +36,8 @@ export type AssetFailureCode =
   | "missing_object"
   | "unauthorized"
   | "expired_upload"
-  | "not_found";
+  | "not_found"
+  | "plan_limit";
 
 export function isAllowedMimeType(
   value: string,

@@ -20,12 +20,12 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Privileged review decisions, change-request responses, and an integrity-verified append-only chain. Not products or lots.
 - [x] **Milestone 7 — PDF/JSON evidence packets and secure client sharing**
       Server-generated packets from a frozen snapshot, private storage, and revocable hashed share links. Not public lot verification.
-- [ ] **Milestone 8 — Public verification**
-      Publish/unpublish lot pages. Unauthenticated access only to published data.
-- [ ] **Milestone 9 — Stripe billing**
-      Checkout or Customer Portal, verified webhooks, subscription state from Stripe.
-- [ ] **Milestone 10 — Resend email**
+- [x] **Milestone 8 — Stripe billing and server-side entitlements**
+      Hosted Checkout and Billing Portal, verified webhooks, trusted subscription state, member and monthly-file limits.
+- [ ] **Milestone 9 — Resend email**
       Invitations and auth-related transactional mail.
+- [ ] **Milestone 10 — Public verification**
+      Publish/unpublish lot pages. Unauthenticated access only to published data.
 - [ ] **Milestone 11 — Sentry observability**
       Server and client error reporting without leaking secrets.
 - [ ] **Milestone 12 — Launch hardening**
@@ -384,4 +384,53 @@ Git tracking: `.env.example` is tracked. `.env.local`, generated packets, raw pr
 - Rate-limit enforcement is covered in pgTAP and key hashing tests, not by issuing 20 public requests in e2e.
 - Changing `evidence-packet.v1` requires a new schema version.
 
-**Next step:** Milestone 8 — Public verification. Do not start it until requested.
+**Next step:** Milestone 8 — Stripe billing and server-side entitlements. Completed 2026-09-20.
+
+### Milestone 8
+
+**Date:** 2026-09-20
+
+**Intent:** Stripe test-mode billing and server-side entitlements only. Relabel the stale Milestone 8 “Public verification” checklist item. Do not begin Milestone 9 (Resend email) or public lot pages.
+
+**Decisions:**
+
+- Starter (5 members / 50 files), Agency (15 / 250), and Agency Plus (50 / 1000) live in `src/server/billing/plans.ts`. Unpaid defaults are 2 members and 10 monthly files.
+- Stripe price IDs load from `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_AGENCY`, and `STRIPE_PRICE_AGENCY_PLUS`. They must all be set together and unique. The client may send a plan slug only.
+- Hosted Checkout and the Billing Portal are created in authenticated server code after an owner or admin check. Success, cancel, and return URLs are server-controlled.
+- Returning from Checkout shows a processing state and does not grant paid entitlements.
+- Webhooks read the raw body, verify signatures with the official SDK (`2026-08-26.dahlia`), persist `stripe_event_id` on `webhook_events`, and reconcile against Stripe’s current subscription object. Stale timestamps do not regress newer local state.
+- Member seats are `active` or `invited` memberships plus pending invitations. Monthly files are organization assets in the current period excluding `processing_failed`. Checks lock the subscription row.
+- Cancellation preserves organizations, assets, packets, and history. `customer.subscription.trial_will_end` is not handled; email is Milestone 9.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                          |
+| `pnpm supabase:start` | Passed. Local stack started from backup; hosted/production projects were not touched.                                            |
+| `pnpm supabase:reset` | Passed. Applied prior migrations plus `20260920240000_billing_enums.sql` and `20260920240001_billing_entitlements.sql`.          |
+| `pnpm supabase:test`  | Passed. 11 files, 239 tests (previous 209 plus billing RLS, quotas, webhook idempotency, and stale-sync cases).                  |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                   |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (31 files, 143 tests).                                                               |
+| `pnpm build`          | Passed. Routes include `/app/billing` and `/api/stripe/webhook`.                                                                 |
+| `pnpm test:e2e`       | Passed. 19 Chromium tests, including unpaid billing usage, checkout processing copy, and existing upload/review/packet coverage. |
+
+The first `pnpm test:e2e` attempt failed because `getByText("Unpaid")` matched both the plan name and the status line. The test now uses `{ exact: true }`. That is not a billing-logic failure.
+
+Git tracking: `.env.example` is tracked with placeholders only. `.env.local`, Stripe CLI output, webhook secrets, and customer payloads are gitignored and are not in the index.
+
+**Security notes:**
+
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and price IDs are server-only. They are never `NEXT_PUBLIC_`.
+- Authenticated clients cannot INSERT/UPDATE/DELETE `subscriptions` or read `webhook_events`. Owner and admin may SELECT their organization’s subscription row.
+- Quota triggers and `sync_organization_subscription` reject cross-tenant Stripe customer reuse.
+- Audit events record checkout, portal, and sync without payment details, signatures, or webhook payloads.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to a production project from this milestone.
+- Checkout, Portal, and live webhook delivery require test-mode keys in `.env.local`. CI and unit tests mock Stripe.
+- `trial_will_end` mail waits for Resend. Tax is not enabled.
+- Concurrent seat/file attempts are serialized by `FOR UPDATE` on the organization subscription row; pgTAP covers the in-transaction boundary rather than two database sessions.
+
+**Next step:** Milestone 9 — Resend email. Do not start it until requested.

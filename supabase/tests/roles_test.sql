@@ -24,6 +24,22 @@ values (
   '11111111-1111-1111-1111-111111111111'
 );
 
+reset role;
+update public.subscriptions
+set
+  status = 'active',
+  entitled_member_limit = 50,
+  entitled_monthly_asset_limit = 1000
+where organization_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","email":"owner@example.com"}',
+  true
+);
+set local role authenticated;
+
 insert into public.memberships (organization_id, user_id, role, status)
 values
   (

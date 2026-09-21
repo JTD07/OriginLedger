@@ -43,7 +43,7 @@ Every business record belongs to exactly one organization. Queries and mutations
 | Role           | Scope           | Capabilities                                                                                                                                                                                                    |
 | -------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization; privileged review                                                                                                          |
-| Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings; privileged review                                                                                    |
+| Admin          | Organization    | Manage members and roles except ownership; manage billing; manage products, lots, events, documents, and publish settings; privileged review                                                                    |
 | Reviewer       | Organization    | Approve, reject, or request changes on pending declarations; cannot submit drafts or manage members                                                                                                             |
 | Operator       | Organization    | Create and update products, lots, events, documents, and project assets; submit declarations and respond to change requests; generate evidence packets and manage share links; cannot perform privileged review |
 | Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                                                                                                                      |
@@ -225,14 +225,44 @@ pending --> revoked
 ### Billing subscription
 
 ```text
+incomplete --> trialing
 incomplete --> active
+incomplete --> incomplete_expired
+trialing --> active
+trialing --> canceled
 active --> past_due
-past_due --> active
-past_due --> canceled
 active --> canceled
+past_due --> active
+past_due --> unpaid
+past_due --> canceled
+unpaid --> canceled
+paused --> active
+paused --> canceled
 ```
 
-Access policy for `past_due` and `canceled` is defined in architecture and billing milestones. The product must not invent paid status.
+Trusted subscription state comes from Stripe after webhook signature verification and reconciliation. The browser returning from Checkout does not grant paid access.
+
+| Condition                                                       | Entitlements                                                           | Notes                                                            |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `trialing`                                                      | Mapped paid plan                                                       | Trial-end date is shown. Conversion waits for Stripe `active`.   |
+| `active`                                                        | Mapped paid plan                                                       | Includes cancel-at-period-end until the trusted period end.      |
+| `past_due`                                                      | Mapped paid plan for 3 days after `past_due_since`, then unpaid limits | Payment-update messaging. Existing records stay readable.        |
+| `canceled`                                                      | Unpaid limits after the trusted end                                    | Organizations, assets, packets, and history are **not** deleted. |
+| `incomplete`, `incomplete_expired`, `unpaid`, `paused`, unknown | Unpaid limits                                                          | Fail closed. Never grant paid entitlements accidentally.         |
+| Checkout abandoned or webhook delayed                           | Last trusted entitlements                                              | Billing page shows a processing state.                           |
+
+Plans (server-owned, not client-supplied):
+
+| Plan          | Member seats | Monthly files |
+| ------------- | ------------ | ------------- |
+| Unpaid / none | 2            | 10            |
+| Starter       | 5            | 50            |
+| Agency        | 15           | 250           |
+| Agency Plus   | 50           | 1000          |
+
+A **member seat** is an `active` or `invited` membership, plus a `pending` invitation. A **monthly file** is an organization asset whose `created_at` is in the current Stripe billing period (or the UTC month if no period is stored), excluding `processing_failed`. Failed operations do not consume quota after they are marked failed. Existing rows above a lower limit stay readable; only new seats and new uploads are blocked.
+
+Owner and admin members may start Checkout or the Billing Portal. Stripe customer IDs, price IDs, plan limits, and subscription status are never accepted from the browser.
 
 ## Data integrity rules
 
