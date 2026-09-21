@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SiteFooter } from "@/components/legal/site-footer";
 import {
   CreateOrganizationForm,
   CreateProjectForm,
@@ -59,6 +60,19 @@ export default async function AppHomePage() {
               </Link>
             </p>
           )}
+          {access?.canOwn ? (
+            <p>
+              <Link className="underline" href="/app/data-handling">
+                Data handling
+              </Link>
+            </p>
+          ) : (
+            <p>
+              <Link className="underline" href="/app/data-handling">
+                Data handling
+              </Link>
+            </p>
+          )}
         </section>
       ) : (
         <section className="flex flex-col gap-3" aria-labelledby="create-org">
@@ -93,6 +107,7 @@ export default async function AppHomePage() {
           </ul>
         )}
       </section>
+      <SiteFooter />
     </main>
   );
 }

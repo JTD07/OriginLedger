@@ -92,5 +92,22 @@ export function liveStripeGateway(
         throw error;
       }
     },
+    async cancelSubscription(input) {
+      try {
+        await stripe.subscriptions.cancel(
+          input.subscriptionId,
+          { invoice_now: false, prorate: true },
+          { idempotencyKey: input.idempotencyKey },
+        );
+      } catch (error) {
+        if (
+          error instanceof Stripe.errors.StripeInvalidRequestError &&
+          error.code === "resource_missing"
+        ) {
+          return;
+        }
+        throw error;
+      }
+    },
   };
 }

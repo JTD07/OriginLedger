@@ -522,11 +522,198 @@ export type Database = {
           },
         ];
       };
+      organization_deletion_completions: {
+        Row: {
+          completed_at: string;
+          id: string;
+          retention_expires_at: string;
+        };
+        Insert: {
+          completed_at?: string;
+          id?: string;
+          retention_expires_at: string;
+        };
+        Update: {
+          completed_at?: string;
+          id?: string;
+          retention_expires_at?: string;
+        };
+        Relationships: [];
+      };
+      organization_deletion_jobs: {
+        Row: {
+          attempt_count: number;
+          canceled_at: string | null;
+          completed_at: string | null;
+          correlation_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          current_step: Database["public"]["Enums"]["organization_deletion_step_name"];
+          id: string;
+          last_error: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          next_retry_at: string | null;
+          organization_id: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["organization_deletion_status"];
+        };
+        Insert: {
+          attempt_count?: number;
+          canceled_at?: string | null;
+          completed_at?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          current_step?: Database["public"]["Enums"]["organization_deletion_step_name"];
+          id?: string;
+          last_error?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          next_retry_at?: string | null;
+          organization_id?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_deletion_status"];
+        };
+        Update: {
+          attempt_count?: number;
+          canceled_at?: string | null;
+          completed_at?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          current_step?: Database["public"]["Enums"]["organization_deletion_step_name"];
+          id?: string;
+          last_error?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          next_retry_at?: string | null;
+          organization_id?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_deletion_status"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_deletion_jobs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      organization_deletion_steps: {
+        Row: {
+          attempt_count: number;
+          completed_at: string | null;
+          id: string;
+          job_id: string;
+          sanitized_detail: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["organization_deletion_step_status"];
+          step_name: Database["public"]["Enums"]["organization_deletion_step_name"];
+        };
+        Insert: {
+          attempt_count?: number;
+          completed_at?: string | null;
+          id?: string;
+          job_id: string;
+          sanitized_detail?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_deletion_step_status"];
+          step_name: Database["public"]["Enums"]["organization_deletion_step_name"];
+        };
+        Update: {
+          attempt_count?: number;
+          completed_at?: string | null;
+          id?: string;
+          job_id?: string;
+          sanitized_detail?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_deletion_step_status"];
+          step_name?: Database["public"]["Enums"]["organization_deletion_step_name"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_deletion_steps_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "organization_deletion_jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      organization_exports: {
+        Row: {
+          archive_sha256: string | null;
+          attempt_count: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string;
+          downloaded_at: string | null;
+          expires_at: string | null;
+          id: string;
+          include_raw_prompts: boolean;
+          last_error: string | null;
+          manifest_sha256: string | null;
+          organization_id: string;
+          schema_version: string;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["organization_export_status"];
+          storage_key: string | null;
+        };
+        Insert: {
+          archive_sha256?: string | null;
+          attempt_count?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          downloaded_at?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          include_raw_prompts?: boolean;
+          last_error?: string | null;
+          manifest_sha256?: string | null;
+          organization_id: string;
+          schema_version?: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_export_status"];
+          storage_key?: string | null;
+        };
+        Update: {
+          archive_sha256?: string | null;
+          attempt_count?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          downloaded_at?: string | null;
+          expires_at?: string | null;
+          id?: string;
+          include_raw_prompts?: boolean;
+          last_error?: string | null;
+          manifest_sha256?: string | null;
+          organization_id?: string;
+          schema_version?: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["organization_export_status"];
+          storage_key?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "organization_exports_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       organizations: {
         Row: {
           created_at: string;
           created_by: string;
           id: string;
+          lifecycle_status: Database["public"]["Enums"]["organization_lifecycle_status"];
           name: string;
           updated_at: string;
         };
@@ -534,6 +721,7 @@ export type Database = {
           created_at?: string;
           created_by: string;
           id?: string;
+          lifecycle_status?: Database["public"]["Enums"]["organization_lifecycle_status"];
           name: string;
           updated_at?: string;
         };
@@ -541,6 +729,7 @@ export type Database = {
           created_at?: string;
           created_by?: string;
           id?: string;
+          lifecycle_status?: Database["public"]["Enums"]["organization_lifecycle_status"];
           name?: string;
           updated_at?: string;
         };
@@ -1134,6 +1323,18 @@ export type Database = {
         };
         Returns: Json;
       };
+      begin_organization_purge: {
+        Args: { p_organization_id: string };
+        Returns: undefined;
+      };
+      claim_organization_deletion_job: {
+        Args: {
+          p_job_id: string;
+          p_lease_seconds: number;
+          p_lease_token: string;
+        };
+        Returns: boolean;
+      };
       claim_webhook_event: {
         Args: {
           p_event_type: string;
@@ -1185,6 +1386,10 @@ export type Database = {
         Returns: Record<string, unknown>[];
       };
       dblink_is_busy: { Args: { "": string }; Returns: number };
+      purge_organization_rows: {
+        Args: { p_organization_id: string };
+        Returns: undefined;
+      };
       set_checkout_pending: {
         Args: { p_organization_id: string; p_stripe_customer_id: string };
         Returns: undefined;
@@ -1234,7 +1439,15 @@ export type Database = {
         | "share_link_revoked"
         | "billing_checkout_started"
         | "billing_portal_opened"
-        | "billing_subscription_synced";
+        | "billing_subscription_synced"
+        | "organization_export_requested"
+        | "organization_export_ready"
+        | "organization_export_failed"
+        | "organization_export_downloaded"
+        | "organization_deletion_requested"
+        | "organization_deletion_canceled"
+        | "organization_deletion_failed"
+        | "organization_deletion_completed";
       billing_plan: "starter" | "agency" | "agency_plus";
       declaration_version_status:
         | "draft"
@@ -1254,6 +1467,30 @@ export type Database = {
       lot_status: "draft" | "active" | "published" | "archived";
       membership_role: "owner" | "admin" | "operator" | "viewer" | "reviewer";
       membership_status: "invited" | "active" | "expired" | "revoked";
+      organization_deletion_status:
+        "requested" | "running" | "failed" | "completed" | "canceled";
+      organization_deletion_step_name:
+        | "mark_pending"
+        | "revoke_access"
+        | "detach_billing"
+        | "inventory"
+        | "delete_origin_assets"
+        | "delete_evidence_packets"
+        | "delete_organization_exports"
+        | "verify_storage"
+        | "delete_rows"
+        | "verify_rows"
+        | "finalize";
+      organization_deletion_step_status:
+        "pending" | "running" | "completed" | "failed" | "skipped";
+      organization_export_status:
+        | "requested"
+        | "processing"
+        | "ready"
+        | "failed"
+        | "expired"
+        | "downloaded";
+      organization_lifecycle_status: "active" | "pending_deletion";
       origin_event_kind:
         "received" | "processed" | "transferred" | "documented";
       origin_event_status: "recorded" | "superseded";
@@ -1420,6 +1657,14 @@ export const Constants = {
         "billing_checkout_started",
         "billing_portal_opened",
         "billing_subscription_synced",
+        "organization_export_requested",
+        "organization_export_ready",
+        "organization_export_failed",
+        "organization_export_downloaded",
+        "organization_deletion_requested",
+        "organization_deletion_canceled",
+        "organization_deletion_failed",
+        "organization_deletion_completed",
       ],
       billing_plan: ["starter", "agency", "agency_plus"],
       declaration_version_status: [
@@ -1442,6 +1687,42 @@ export const Constants = {
       lot_status: ["draft", "active", "published", "archived"],
       membership_role: ["owner", "admin", "operator", "viewer", "reviewer"],
       membership_status: ["invited", "active", "expired", "revoked"],
+      organization_deletion_status: [
+        "requested",
+        "running",
+        "failed",
+        "completed",
+        "canceled",
+      ],
+      organization_deletion_step_name: [
+        "mark_pending",
+        "revoke_access",
+        "detach_billing",
+        "inventory",
+        "delete_origin_assets",
+        "delete_evidence_packets",
+        "delete_organization_exports",
+        "verify_storage",
+        "delete_rows",
+        "verify_rows",
+        "finalize",
+      ],
+      organization_deletion_step_status: [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "skipped",
+      ],
+      organization_export_status: [
+        "requested",
+        "processing",
+        "ready",
+        "failed",
+        "expired",
+        "downloaded",
+      ],
+      organization_lifecycle_status: ["active", "pending_deletion"],
       origin_event_kind: ["received", "processed", "transferred", "documented"],
       origin_event_status: ["recorded", "superseded"],
       review_decision: ["accepted", "returned", "rejected"],

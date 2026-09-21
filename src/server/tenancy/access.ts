@@ -15,6 +15,7 @@ export type OrgAccess = {
   canMutate: boolean;
   canReview: boolean;
   canBill: boolean;
+  canOwn: boolean;
 };
 
 export async function getOrgAccess(
@@ -46,5 +47,6 @@ export async function getOrgAccess(
     canBill: BILLING_ROLES.includes(
       data.role as (typeof BILLING_ROLES)[number],
     ),
+    canOwn: data.role === "owner",
   };
 }

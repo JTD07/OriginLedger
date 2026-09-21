@@ -82,7 +82,7 @@ flowchart LR
 
 ## Auth and session
 
-Supabase Auth issues the session. The Next.js server reads cookies via `@supabase/ssr`. `src/proxy.ts` refreshes tokens with `getClaims()` on each matched request. Server Components and Server Actions verify identity with `getClaims()` again; they never trust `getSession()` for authorization. Client components do not persist service credentials. Password recovery uses the Auth confirmation route. Hosted invitation and auth mail via Resend waits for Milestone 9.
+Supabase Auth issues the session. The Next.js server reads cookies via `@supabase/ssr`. `src/proxy.ts` refreshes tokens with `getClaims()` on each matched request. Server Components and Server Actions verify identity with `getClaims()` again; they never trust `getSession()` for authorization. Client components do not persist service credentials. Password recovery uses the Auth confirmation route. Hosted invitation and auth mail via Resend waits for a later milestone.
 
 ## Data and RLS
 
@@ -90,12 +90,13 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 - RLS is enabled on every `public` application table. Client roles receive explicit GRANTs only (`supabase/config.toml` sets `auto_expose_new_tables = false`).
 - Helper predicates live in the unexposed `private` schema as `security definer` functions with a fixed `search_path`. Policies call `(select auth.uid())` and those helpers. They never read `user_metadata`.
 - Only `memberships.status = 'active'` grants tenant access. Invited, expired, and revoked memberships do not.
-- Owner, admin, and operator may mutate operational records. Viewers are read-only. Owner and admin manage members, invitations, publish settings, and billing. Only the owner can delete an organization. Owner and admin may `SELECT` `subscriptions`. `webhook_events` is service-role only.
+- Owner, admin, and operator may mutate operational records. Viewers are read-only. Owner and admin manage members, invitations, publish settings, and billing. Only the owner can request organization deletion. Owner and admin may `SELECT` `subscriptions`. `webhook_events`, `organization_exports`, and deletion-job tables are service-role only.
 - Anonymous visitors may `SELECT` published lots and `is_publishable` events/documents. They have no GRANT on memberships, invitations, or subscriptions.
 - Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
 - `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
 - Generated-compatible database types are checked in at `src/types/database.ts`. Regenerate with `pnpm supabase:types` after schema changes.
-- Private origin-record files live in the `origin-assets` bucket. Generated evidence packets live in the separate private `evidence-packets` bucket under `exports/{uuid}` keys. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Packet downloads stream through authorized server endpoints. Lot-linked `documents` remain a later milestone.
+- Private origin-record files live in the `origin-assets` bucket. Generated evidence packets live in the separate private `evidence-packets` bucket under `exports/{uuid}` keys. Organization data exports live in the private `organization-exports` bucket under `org-exports/{uuid}` keys. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Packet and organization-export downloads stream through authorized server endpoints. Lot-linked `documents` remain a later milestone.
+- Direct `DELETE` of an organization by an authenticated owner is not allowed. Deletion is a service-role job. Authenticated members cannot `SELECT` export or deletion-job tables. Append-only tenant history may be deleted with the tenant after storage verification; optional `organization_deletion_completions` rows contain only timestamps.
 
 ## Environment variables
 
@@ -115,7 +116,9 @@ Resend sends invitation, authentication, and billing-related mail. Templates mus
 
 ## Observability
 
-Sentry captures server exceptions and selected client errors. Source maps use `SENTRY_AUTH_TOKEN` in CI, never in the browser. Do not wrap RLS failures into generic 500s that hide tenancy bugs from tests.
+Sentry captures server, client, and edge exceptions when a DSN is set. `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` are optional; missing values leave the SDK inert. `SENTRY_AUTH_TOKEN` is CI/server-only and is never `NEXT_PUBLIC_`. Environments are `local`, `test`, `preview`, and `production`. Release identifiers come from deployment metadata when present. Source maps upload only when `SENTRY_UPLOAD_SOURCEMAPS=true` with org, project, and auth token, then are deleted after upload and hidden from public serving. `beforeSend` and `beforeBreadcrumb` run a shared allowlist scrubber. Session replay and traces are disabled. Structured server logs emit JSON in production with timestamp, severity, event name, environment, correlation ID, route template, status, duration, and error class only. `GET /api/health` returns `{ status, version }`.
+
+Do not wrap RLS failures into generic 500s that hide tenancy bugs from tests.
 
 ## Environment variables
 
@@ -126,7 +129,7 @@ Typed parsing lives in `src/env`. Zod schemas validate values; empty strings are
 | `src/env/public.ts` | Server or Client Components               | `NEXT_PUBLIC_*` only                       |
 | `src/env/server.ts` | Server-only code (`import "server-only"`) | Secret keys and other non-public variables |
 
-Remaining service credentials (Resend, Sentry) are optional until those milestones, but if set they must match the expected format. Stripe secret, webhook, and price variables are optional at parse time so CI can build without test-mode keys; Checkout, Portal, and webhook handling fail closed when they are missing, duplicated, or unknown. Validation errors name the variable and the rule. They never print the invalid value.
+Remaining service credentials (Resend) are optional until those milestones, but if set they must match the expected format. Sentry DSN values are optional; when absent, Sentry stays disabled. Stripe secret, webhook, and price variables are optional at parse time so CI can build without test-mode keys; Checkout, Portal, and webhook handling fail closed when they are missing, duplicated, or unknown. Validation errors name the variable and the rule. They never print the invalid value.
 
 `next.config.ts` validates public variables during `next build` / `next dev`. `src/instrumentation.ts` validates public and server variables when the Node.js server starts.
 
@@ -336,4 +339,23 @@ Share-page headers: `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control
 - Seat consumers: `memberships.status in (active, invited)` plus `invitations.status = pending`.
 - Monthly files: assets in the organization with `created_at >= current_period_start` (or UTC month start) and `status <> processing_failed`.
 - Grace: 3 days after `past_due_since`. After grace, unpaid limits apply even if Stripe has not sent another event.
-- Data preservation: Stripe cancellation never deletes organizations, assets, packets, or history.
+- Data preservation: Stripe cancellation never deletes organizations, assets, packets, or history. Organization deletion later cancels the Stripe subscription and does not delete Stripe invoices or customers.
+
+### ADR-016: Scrubbed Sentry, owner export, and controlled deletion
+
+- **Status:** Accepted
+- **Decision:** Initialize `@sentry/nextjs` for Node, browser, and edge with an allowlist scrubber, no default PII, and no replay or traces. Organization export and deletion are owner-only jobs with confirmation and password reauthentication. Storage objects are removed through the Storage API. Default deletion leaves no external audit record.
+- **Why:** Production incidents need stack traces without leaking tenant content. Export and deletion are high-impact privacy operations.
+- **Consequences:** Tests must not send telemetry to a real Sentry project. Privacy and terms pages stay draft placeholders until counsel review. Resend email and public lot verification remain later milestones.
+
+### Milestone 9 observability and privacy
+
+- Sentry files: `src/instrumentation.ts`, `src/instrumentation-client.ts`, `src/sentry.server.config.ts`, `src/sentry.edge.config.ts`. `next.config.ts` wraps with `withSentryConfig` from `@sentry/nextjs/config`.
+- Source maps: `productionBrowserSourceMaps` is false. Upload runs only when `SENTRY_UPLOAD_SOURCEMAPS=true` with `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN`. Client maps under `.next/static/**/*.map` are deleted after upload. The auth token is never `NEXT_PUBLIC_`.
+- Correlation header: `x-correlation-id`. Invalid inbound values are replaced with a UUID. AsyncLocalStorage isolates concurrent Node requests.
+- Health: `GET /api/health` returns `{ status, version }` only.
+- Export schema: `organization-export.v1`.
+- Deletion steps: mark_pending, revoke_access, detach_billing, inventory, delete_origin_assets, delete_evidence_packets, delete_organization_exports, verify_storage, delete_rows, verify_rows, finalize.
+- Authenticated clients have no GRANT on export/deletion job tables and cannot DELETE organizations. Service-role purge uses `originledger.purge_organization`.
+- Append-only evidence events are not rewritten. They are deleted with the tenant after storage verification.
+- Default finalize removes job rows. `ORGANIZATION_DELETION_RETENTION_DAYS` may keep a timestamp-only completion row pending counsel review.

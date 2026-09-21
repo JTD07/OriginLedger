@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteFooter } from "@/components/legal/site-footer";
 
 export default function Home() {
   return (
@@ -17,6 +18,7 @@ export default function Home() {
           Create an account
         </Link>
       </p>
+      <SiteFooter />
     </main>
   );
 }

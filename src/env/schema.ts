@@ -6,6 +6,7 @@ export const PUBLIC_ENV_KEYS = [
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_SENTRY_DSN",
+  "NEXT_PUBLIC_APP_VERSION",
 ] as const;
 
 export const SERVER_ONLY_ENV_KEYS = [
@@ -19,6 +20,13 @@ export const SERVER_ONLY_ENV_KEYS = [
   "RESEND_FROM_EMAIL",
   "SENTRY_DSN",
   "SENTRY_AUTH_TOKEN",
+  "SENTRY_ORG",
+  "SENTRY_PROJECT",
+  "SENTRY_ENVIRONMENT",
+  "SENTRY_RELEASE",
+  "SENTRY_UPLOAD_SOURCEMAPS",
+  "ORGANIZATION_EXPORT_EXPIRES_HOURS",
+  "ORGANIZATION_DELETION_RETENTION_DAYS",
 ] as const;
 
 export type PublicEnvKey = (typeof PUBLIC_ENV_KEYS)[number];
@@ -85,12 +93,31 @@ const optionalEmail = z.preprocess(
   z.email({ error: "must be a valid email address when set" }).optional(),
 );
 
+const optionalSentryEnvironment = z.preprocess(
+  emptyToUndefined,
+  z
+    .enum(["local", "test", "preview", "production"], {
+      error: 'must be "local", "test", "preview", or "production" when set',
+    })
+    .optional(),
+);
+
+const optionalPositiveInt = z.preprocess(
+  emptyToUndefined,
+  z.coerce
+    .number()
+    .int({ error: "must be an integer when set" })
+    .positive({ error: "must be a positive integer when set" })
+    .optional(),
+);
+
 export const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: requiredHttpUrl,
   NEXT_PUBLIC_SUPABASE_URL: requiredHttpUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: requiredNonEmptyString,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalPrefixedString("pk_"),
   NEXT_PUBLIC_SENTRY_DSN: optionalHttpUrl,
+  NEXT_PUBLIC_APP_VERSION: optionalNonEmptyString,
 });
 
 const optionalStripeSecret = z.preprocess(
@@ -124,4 +151,11 @@ export const serverEnvSchema = z.object({
   RESEND_FROM_EMAIL: optionalEmail,
   SENTRY_DSN: optionalHttpUrl,
   SENTRY_AUTH_TOKEN: optionalNonEmptyString,
+  SENTRY_ORG: optionalNonEmptyString,
+  SENTRY_PROJECT: optionalNonEmptyString,
+  SENTRY_ENVIRONMENT: optionalSentryEnvironment,
+  SENTRY_RELEASE: optionalNonEmptyString,
+  SENTRY_UPLOAD_SOURCEMAPS: optionalNonEmptyString,
+  ORGANIZATION_EXPORT_EXPIRES_HOURS: optionalPositiveInt,
+  ORGANIZATION_DELETION_RETENTION_DAYS: optionalPositiveInt,
 });

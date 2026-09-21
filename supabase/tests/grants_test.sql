@@ -93,8 +93,8 @@ select ok(
   'authenticated cannot write subscriptions'
 );
 select ok(
-  has_table_privilege('authenticated', 'public.organizations', 'delete'),
-  'authenticated has delete grant on organizations (owner policy still applies)'
+  not has_table_privilege('authenticated', 'public.organizations', 'delete'),
+  'authenticated cannot delete organizations'
 );
 select ok(
   has_table_privilege('authenticated', 'public.subscriptions', 'select'),

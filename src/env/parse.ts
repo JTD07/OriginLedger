@@ -7,6 +7,7 @@ export type PublicEnv = {
   supabaseAnonKey: string;
   stripePublishableKey: string | undefined;
   sentryDsn: string | undefined;
+  appVersion: string;
 };
 
 export type ServerEnv = {
@@ -20,6 +21,13 @@ export type ServerEnv = {
   resendFromEmail: string | undefined;
   sentryDsn: string | undefined;
   sentryAuthToken: string | undefined;
+  sentryOrg: string | undefined;
+  sentryProject: string | undefined;
+  sentryEnvironment: "local" | "test" | "preview" | "production" | undefined;
+  sentryRelease: string | undefined;
+  sentryUploadSourcemaps: string | undefined;
+  organizationExportExpiresHours: number | undefined;
+  organizationDeletionRetentionDays: number | undefined;
 };
 
 export function parsePublicEnv(source: EnvSource): PublicEnv {
@@ -35,6 +43,7 @@ export function parsePublicEnv(source: EnvSource): PublicEnv {
     supabaseAnonKey: result.data.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     stripePublishableKey: result.data.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     sentryDsn: result.data.NEXT_PUBLIC_SENTRY_DSN,
+    appVersion: result.data.NEXT_PUBLIC_APP_VERSION ?? "0.1.0",
   };
 }
 
@@ -56,5 +65,14 @@ export function parseServerEnv(source: EnvSource): ServerEnv {
     resendFromEmail: result.data.RESEND_FROM_EMAIL,
     sentryDsn: result.data.SENTRY_DSN,
     sentryAuthToken: result.data.SENTRY_AUTH_TOKEN,
+    sentryOrg: result.data.SENTRY_ORG,
+    sentryProject: result.data.SENTRY_PROJECT,
+    sentryEnvironment: result.data.SENTRY_ENVIRONMENT,
+    sentryRelease: result.data.SENTRY_RELEASE,
+    sentryUploadSourcemaps: result.data.SENTRY_UPLOAD_SOURCEMAPS,
+    organizationExportExpiresHours:
+      result.data.ORGANIZATION_EXPORT_EXPIRES_HOURS,
+    organizationDeletionRetentionDays:
+      result.data.ORGANIZATION_DELETION_RETENTION_DAYS,
   };
 }

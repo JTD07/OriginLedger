@@ -52,6 +52,10 @@ scripts/probe-org.mjs
 .stripe-cli/
 stripe-debug.log
 
+# Sentry
+.sentryclirc
+sentry.properties
+
 
 # vercel
 .vercel

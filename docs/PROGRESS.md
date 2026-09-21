@@ -22,12 +22,12 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Server-generated packets from a frozen snapshot, private storage, and revocable hashed share links. Not public lot verification.
 - [x] **Milestone 8 — Stripe billing and server-side entitlements**
       Hosted Checkout and Billing Portal, verified webhooks, trusted subscription state, member and monthly-file limits.
-- [ ] **Milestone 9 — Resend email**
+- [x] **Milestone 9 — Production observability and privacy controls**
+      Sentry, scrubbing, structured logs, correlation IDs, health checks, organization export, controlled deletion, and draft legal pages.
+- [ ] **Milestone 10 — Resend email**
       Invitations and auth-related transactional mail.
-- [ ] **Milestone 10 — Public verification**
+- [ ] **Milestone 11 — Public verification**
       Publish/unpublish lot pages. Unauthenticated access only to published data.
-- [ ] **Milestone 11 — Sentry observability**
-      Server and client error reporting without leaking secrets.
 - [ ] **Milestone 12 — Launch hardening**
       Access, rate limits, empty states, threat review. Still no compliance claims.
 
@@ -433,4 +433,54 @@ Git tracking: `.env.example` is tracked with placeholders only. `.env.local`, St
 - `trial_will_end` mail waits for Resend. Tax is not enabled.
 - Concurrent seat/file attempts are serialized by `FOR UPDATE` on the organization subscription row; pgTAP covers the in-transaction boundary rather than two database sessions.
 
-**Next step:** Milestone 9 — Resend email. Do not start it until requested.
+**Next step:** Milestone 9 — production observability and privacy controls. The checklist label “Resend email” for Milestone 9 was stale; Resend is Milestone 10. Do not start it until requested.
+
+### Milestone 9
+
+**Date:** 2026-09-21
+
+**Intent:** Production observability and privacy controls only. Relabel the stale Milestone 9 “Resend email” checklist item. Do not begin Milestone 10 (Resend), public lot verification, or launch hardening.
+
+**Decisions:**
+
+- `@sentry/nextjs` 10.75.0 initializes on Node (`src/sentry.server.config.ts`), the browser (`src/instrumentation-client.ts`), and edge (`src/sentry.edge.config.ts`). `onRequestError` uses `Sentry.captureRequestError`. Sentry stays disabled without a DSN and is always disabled in `test` / Vitest. `sendDefaultPii` is false. Replay and traces sample rates are 0.
+- Source maps upload only when `SENTRY_UPLOAD_SOURCEMAPS=true` with `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN`. `withSentryConfig` is imported from `@sentry/nextjs/config`. Client maps are deleted after upload. The auth token is omitted from the build plugin unless upload is enabled and is never `NEXT_PUBLIC_`.
+- Events, breadcrumbs, and structured logs share an allowlist scrubber. Request bodies, cookies, headers, prompts, filenames, notes, emails, JWTs, Stripe/Resend keys, and signed-URL query strings are dropped or redacted before transmission.
+- Correlation IDs: inbound `x-correlation-id` / `x-request-id` must match `[A-Za-z0-9._-]{8,128}` or a UUID is generated. The value is returned on the response and stored in AsyncLocalStorage.
+- `GET /api/health` returns `{ status, version }` only.
+- Organization export schema `organization-export.v1`. Owner-only, password reauthentication, confirmation phrase `EXPORT`. Archives live in the private `organization-exports` bucket under `org-exports/{uuid}`. Raw prompts are omitted unless the owner opts in for that request.
+- Organization deletion is an owner-only leased job (`DELETE` confirmation plus password). Steps: mark_pending, revoke_access, detach_billing, inventory, delete_origin_assets, delete_evidence_packets, delete_organization_exports, verify_storage, delete_rows, verify_rows, finalize. Storage objects are removed through the Storage API. Default finalize leaves no external audit row. `ORGANIZATION_DELETION_RETENTION_DAYS` may keep a timestamp-only completion record pending counsel review.
+- `/privacy` and `/terms` are draft placeholders requiring counsel review. `/security` describes implemented controls without certification claims. `/app/data-handling` is the in-product explanation.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                                                         |
+| `pnpm supabase:start` | Passed. Local stack started; hosted/production projects were not touched.                                                                                       |
+| `pnpm supabase:reset` | Passed. Applied prior migrations plus `20260921010000_privacy_enums.sql` and `20260921010001_organization_privacy.sql`.                                         |
+| `pnpm supabase:test`  | Passed. 12 files, 266 tests (previous 239 plus privacy RLS, export/deletion grants, write-blocking, and purge cases).                                           |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                                                  |
+| `pnpm check`          | Passed after TypeScript and lint fixes. Format, lint, typecheck, and Vitest (42 files, 188 tests).                                                              |
+| `pnpm build`          | Passed. Routes include `/api/health`, `/privacy`, `/terms`, `/security`, `/app/data-handling`, and organization-export download. Source maps were not uploaded. |
+| `pnpm test:e2e`       | Passed. 21 Chromium tests, including health payload shape, draft legal pages, and existing upload/review/packet/billing coverage.                               |
+
+The first `pnpm check` failed on Sentry build-option types (`hideSourceMaps` is not in current `SentryBuildOptions`), a `NextRequest` type-only import in `src/proxy.ts`, and related strict casts. Those were Milestone 9 wiring issues and were fixed. The first `pnpm test:e2e` failed because the security-page disclaimer matched both the body and the footer; the assertion now targets `main`. That is not an observability-logic failure.
+
+Git tracking: `.env.example` is tracked with placeholders only. `.env.local`, `.sentryclirc`, `sentry.properties`, `.next` source maps, Playwright reports, and export/deletion fixtures are gitignored and are not in the index. Local Sentry DSN and auth token were empty; tests did not send events to a real Sentry project.
+
+**Security notes:**
+
+- `SENTRY_AUTH_TOKEN` is server/CI-only. `NEXT_PUBLIC_SENTRY_DSN` is the only public Sentry value.
+- Authenticated clients cannot SELECT export/deletion job tables or DELETE organizations. Service-role purge is gated by `originledger.purge_organization`.
+- Pending deletion blocks authenticated tenant writes. Storage deletion uses prefix `${organizationId}/` derived from a UUID, never a client path.
+- Stripe cancellation on deletion does not delete invoices or customers.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to a production project from this milestone.
+- Privacy and terms pages are drafts. Counsel must review copy, subprocessors, retention, and user-rights language before launch. `ORGANIZATION_DELETION_RETENTION_DAYS` is unset by default.
+- `@sentry/cli` is listed in `pnpm-workspace.yaml` `allowBuilds` as false so local/CI installs do not compile the native CLI. Production source-map upload needs a CI job that enables `SENTRY_UPLOAD_SOURCEMAPS` with org, project, and token.
+- Resend email and public lot verification are not implemented.
+
+**Next step:** Milestone 10 — Resend email. Do not start it until requested.

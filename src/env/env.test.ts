@@ -33,6 +33,7 @@ describe("parsePublicEnv", () => {
       supabaseAnonKey: "local-anon-key",
       stripePublishableKey: undefined,
       sentryDsn: undefined,
+      appVersion: "0.1.0",
     });
   });
 
@@ -48,6 +49,8 @@ describe("parsePublicEnv", () => {
     expect(env.appUrl).toBe("http://localhost:3000");
     expect(env.supabaseUrl).toBe("https://example.supabase.co");
     expect(env.stripePublishableKey).toBe("pk_test_placeholder");
+    expect(env.sentryDsn).toBe("https://example@o0.ingest.sentry.io/0");
+    expect(env.appVersion).toBe("0.1.0");
   });
 
   test("treats blank required values as missing", () => {
@@ -142,6 +145,13 @@ describe("parseServerEnv", () => {
       resendFromEmail: undefined,
       sentryDsn: undefined,
       sentryAuthToken: undefined,
+      sentryOrg: undefined,
+      sentryProject: undefined,
+      sentryEnvironment: undefined,
+      sentryRelease: undefined,
+      sentryUploadSourcemaps: undefined,
+      organizationExportExpiresHours: undefined,
+      organizationDeletionRetentionDays: undefined,
     });
   });
 
@@ -157,11 +167,18 @@ describe("parseServerEnv", () => {
       RESEND_FROM_EMAIL: "alerts@example.com",
       SENTRY_DSN: "https://example@o0.ingest.sentry.io/0",
       SENTRY_AUTH_TOKEN: "sentry-auth-token",
+      SENTRY_ORG: "acme",
+      SENTRY_PROJECT: "originledger",
+      SENTRY_ENVIRONMENT: "local",
+      SENTRY_UPLOAD_SOURCEMAPS: "true",
+      ORGANIZATION_EXPORT_EXPIRES_HOURS: "168",
     });
 
     expect(env.stripeSecretKey).toBe("sk_test_placeholder");
     expect(env.stripePriceAgency).toBe("price_agency");
     expect(env.resendFromEmail).toBe("alerts@example.com");
+    expect(env.sentryOrg).toBe("acme");
+    expect(env.organizationExportExpiresHours).toBe(168);
   });
 
   test("rejects an invalid price ID without echoing it", () => {

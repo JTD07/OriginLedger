@@ -138,6 +138,7 @@ function gatewayWith(
     async retrieveSubscription() {
       return sub;
     },
+    async cancelSubscription() {},
   };
 }
 
@@ -235,6 +236,7 @@ describe("processVerifiedStripeEvent", () => {
           items: { data: [{ price: { id: "price_starter_test" } }] },
         };
       },
+      async cancelSubscription() {},
     };
     const event = {
       id: "evt_retry",

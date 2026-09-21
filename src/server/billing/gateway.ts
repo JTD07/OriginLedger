@@ -39,6 +39,10 @@ export type StripeGateway = {
       }>;
     } | null;
   } | null>;
+  cancelSubscription(input: {
+    subscriptionId: string;
+    idempotencyKey: string;
+  }): Promise<void>;
 };
 
 export class StripeObjectMissingError extends Error {
