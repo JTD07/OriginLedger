@@ -259,6 +259,143 @@ export type Database = {
           },
         ];
       };
+      evidence_exports: {
+        Row: {
+          asset_id: string;
+          chain_head_event_hash: string | null;
+          chain_head_event_id: string | null;
+          chain_head_sequence: number | null;
+          content_sha256: string;
+          created_at: string;
+          created_by: string;
+          declaration_id: string;
+          declaration_version_id: string;
+          format: Database["public"]["Enums"]["evidence_export_format"];
+          generated_at: string;
+          id: string;
+          includes_raw_prompt: boolean;
+          organization_id: string;
+          project_id: string;
+          schema_version: string;
+          storage_key: string;
+        };
+        Insert: {
+          asset_id: string;
+          chain_head_event_hash?: string | null;
+          chain_head_event_id?: string | null;
+          chain_head_sequence?: number | null;
+          content_sha256: string;
+          created_at?: string;
+          created_by: string;
+          declaration_id: string;
+          declaration_version_id: string;
+          format: Database["public"]["Enums"]["evidence_export_format"];
+          generated_at?: string;
+          id?: string;
+          includes_raw_prompt?: boolean;
+          organization_id: string;
+          project_id: string;
+          schema_version: string;
+          storage_key: string;
+        };
+        Update: {
+          asset_id?: string;
+          chain_head_event_hash?: string | null;
+          chain_head_event_id?: string | null;
+          chain_head_sequence?: number | null;
+          content_sha256?: string;
+          created_at?: string;
+          created_by?: string;
+          declaration_id?: string;
+          declaration_version_id?: string;
+          format?: Database["public"]["Enums"]["evidence_export_format"];
+          generated_at?: string;
+          id?: string;
+          includes_raw_prompt?: boolean;
+          organization_id?: string;
+          project_id?: string;
+          schema_version?: string;
+          storage_key?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_exports_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+          {
+            foreignKeyName: "evidence_exports_chain_head_fkey";
+            columns: ["chain_head_event_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "evidence_exports_declaration_org_fkey";
+            columns: ["declaration_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "provenance_declarations";
+            referencedColumns: ["id", "organization_id"];
+          },
+          {
+            foreignKeyName: "evidence_exports_version_org_fkey";
+            columns: [
+              "declaration_version_id",
+              "declaration_id",
+              "organization_id",
+            ];
+            isOneToOne: false;
+            referencedRelation: "provenance_declaration_versions";
+            referencedColumns: ["id", "declaration_id", "organization_id"];
+          },
+        ];
+      };
+      evidence_share_links: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          evidence_export_id: string;
+          expires_at: string | null;
+          id: string;
+          organization_id: string;
+          revoked_at: string | null;
+          status: Database["public"]["Enums"]["share_link_status"];
+          token_hash: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          evidence_export_id: string;
+          expires_at?: string | null;
+          id?: string;
+          organization_id: string;
+          revoked_at?: string | null;
+          status?: Database["public"]["Enums"]["share_link_status"];
+          token_hash: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          evidence_export_id?: string;
+          expires_at?: string | null;
+          id?: string;
+          organization_id?: string;
+          revoked_at?: string | null;
+          status?: Database["public"]["Enums"]["share_link_status"];
+          token_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_share_links_export_org_fkey";
+            columns: ["evidence_export_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_exports";
+            referencedColumns: ["id", "organization_id"];
+          },
+        ];
+      };
       invitations: {
         Row: {
           accepted_by: string | null;
@@ -801,6 +938,24 @@ export type Database = {
           },
         ];
       };
+      share_rate_limits: {
+        Row: {
+          key_hash: string;
+          request_count: number;
+          window_start: string;
+        };
+        Insert: {
+          key_hash: string;
+          request_count?: number;
+          window_start: string;
+        };
+        Update: {
+          key_hash?: string;
+          request_count?: number;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       subscriptions: {
         Row: {
           created_at: string;
@@ -901,6 +1056,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      consume_share_rate_limit: {
+        Args: { p_key_hash: string; p_max: number; p_window_seconds: number };
+        Returns: Json;
+      };
       create_organization: { Args: { p_name: string }; Returns: string };
       dblink: { Args: { "": string }; Returns: Record<string, unknown>[] };
       dblink_cancel_query: { Args: { "": string }; Returns: string };
@@ -951,7 +1110,10 @@ export type Database = {
         | "assessment_generated"
         | "assessment_invalidated"
         | "assessment_superseded"
-        | "declaration_reviewed";
+        | "declaration_reviewed"
+        | "evidence_packet_generated"
+        | "share_link_created"
+        | "share_link_revoked";
       declaration_version_status:
         | "draft"
         | "pending_review"
@@ -965,6 +1127,7 @@ export type Database = {
         | "review_rejected"
         | "changes_requested"
         | "changes_responded";
+      evidence_export_format: "json" | "pdf";
       invitation_status: "pending" | "accepted" | "expired" | "revoked";
       lot_status: "draft" | "active" | "published" | "archived";
       membership_role: "owner" | "admin" | "operator" | "viewer" | "reviewer";
@@ -973,6 +1136,7 @@ export type Database = {
         "received" | "processed" | "transferred" | "documented";
       origin_event_status: "recorded" | "superseded";
       review_decision: "accepted" | "returned" | "rejected";
+      share_link_status: "active" | "revoked";
       subscription_status: "incomplete" | "active" | "past_due" | "canceled";
     };
     CompositeTypes: {
@@ -1119,6 +1283,9 @@ export const Constants = {
         "assessment_invalidated",
         "assessment_superseded",
         "declaration_reviewed",
+        "evidence_packet_generated",
+        "share_link_created",
+        "share_link_revoked",
       ],
       declaration_version_status: [
         "draft",
@@ -1135,6 +1302,7 @@ export const Constants = {
         "changes_requested",
         "changes_responded",
       ],
+      evidence_export_format: ["json", "pdf"],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       lot_status: ["draft", "active", "published", "archived"],
       membership_role: ["owner", "admin", "operator", "viewer", "reviewer"],
@@ -1142,6 +1310,7 @@ export const Constants = {
       origin_event_kind: ["received", "processed", "transferred", "documented"],
       origin_event_status: ["recorded", "superseded"],
       review_decision: ["accepted", "returned", "rejected"],
+      share_link_status: ["active", "revoked"],
       subscription_status: ["incomplete", "active", "past_due", "canceled"],
     },
   },

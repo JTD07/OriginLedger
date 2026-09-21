@@ -1,5 +1,5 @@
 begin;
-select plan(56);
+select plan(68);
 
 select ok(
   not has_table_privilege('anon', 'public.memberships', 'select'),
@@ -228,6 +228,59 @@ select ok(
     where oid = 'public.organizations'::regclass
   ),
   'RLS is enabled on organizations'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.evidence_exports', 'select'),
+  'anon has no select grant on evidence_exports'
+);
+select ok(
+  not has_table_privilege('anon', 'public.evidence_share_links', 'select'),
+  'anon has no select grant on evidence_share_links'
+);
+select ok(
+  not has_table_privilege('anon', 'public.share_rate_limits', 'select'),
+  'anon has no select grant on share_rate_limits'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.share_rate_limits', 'select'),
+  'authenticated has no select grant on share_rate_limits'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_exports', 'update'),
+  'authenticated cannot update evidence_exports'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_exports', 'delete'),
+  'authenticated cannot delete evidence_exports'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_share_links', 'delete'),
+  'authenticated cannot delete evidence_share_links'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.evidence_exports', 'select'),
+  'authenticated has select grant on evidence_exports'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.evidence_share_links', 'select'),
+  'authenticated has select grant on evidence_share_links'
+);
+select ok(
+  has_table_privilege('service_role', 'public.evidence_exports', 'select,insert,update,delete'),
+  'service_role retains full access to evidence_exports'
+);
+select ok(
+  has_table_privilege('service_role', 'public.evidence_share_links', 'select,insert,update,delete'),
+  'service_role retains full access to evidence_share_links'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.consume_share_rate_limit(text, integer, integer)',
+    'execute'
+  ),
+  'authenticated cannot execute consume_share_rate_limit'
 );
 
 select ok(

@@ -18,7 +18,7 @@ None of these files are stored in git as media. They are built at test time.
 node -e "const fs=require('fs'); const png=Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a4944415478da63000000020001005e0dc8d20000000049454e44ae426082','hex'); fs.writeFileSync('tmp-lot.png', png);"
 ```
 
-Delete any generated files before committing. `.gitignore` ignores `tmp-*.png`, `tmp-*.jpg`, `tmp-*.pdf`, and `tmp-*.webp`.
+Delete any generated files before committing. `.gitignore` ignores `tmp-*.png`, `tmp-*.jpg`, `tmp-*.pdf`, `tmp-*.webp`, and `tmp-*.json`. Do not commit generated evidence packets, raw prompts, or share tokens.
 
 ## Local verification that needs Storage
 

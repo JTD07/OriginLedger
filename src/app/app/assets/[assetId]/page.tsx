@@ -90,6 +90,13 @@ export default async function AssetDetailPage({
           </Link>
         </p>
       ) : null}
+      {asset.status === "ready" ? (
+        <p>
+          <Link className="underline" href={`/app/assets/${asset.id}/exports`}>
+            Evidence packets
+          </Link>
+        </p>
+      ) : null}
       {inline ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

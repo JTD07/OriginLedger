@@ -40,14 +40,14 @@ Every business record belongs to exactly one organization. Queries and mutations
 
 ## User roles
 
-| Role           | Scope           | Capabilities                                                                                                                                                  |
-| -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization; privileged review                                                        |
-| Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings; privileged review                                  |
-| Reviewer       | Organization    | Approve, reject, or request changes on pending declarations; cannot submit drafts or manage members                                                           |
-| Operator       | Organization    | Create and update products, lots, events, documents, and project assets; submit declarations and respond to change requests; cannot perform privileged review |
-| Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                                                                    |
-| Public visitor | Unauthenticated | View the marketing landing page and any lot verification page the organization has published                                                                  |
+| Role           | Scope           | Capabilities                                                                                                                                                                                                    |
+| -------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization; privileged review                                                                                                          |
+| Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings; privileged review                                                                                    |
+| Reviewer       | Organization    | Approve, reject, or request changes on pending declarations; cannot submit drafts or manage members                                                                                                             |
+| Operator       | Organization    | Create and update products, lots, events, documents, and project assets; submit declarations and respond to change requests; generate evidence packets and manage share links; cannot perform privileged review |
+| Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                                                                                                                      |
+| Public visitor | Unauthenticated | View the marketing landing page, a valid packet share link, and any lot verification page the organization has published                                                                                        |
 
 A user without membership in an organization can sign in and create an organization, or accept an invitation.
 
@@ -68,6 +68,8 @@ Platform super-admin is out of scope for the MVP.
 - **Provenance declaration** — a versioned record of how an asset was created, including optional AI-tool metadata. Reviewed and rejected versions are immutable.
 - **Disclosure assessment** — a deterministic, versioned recommendation produced from a declaration. It is not a legal or compliance decision.
 - **Evidence event** — an append-only, tamper-evident record of a declaration or review action on an asset. The chain is integrity-verified. It is not a blockchain and is not absolutely tamper-proof.
+- **Evidence packet export** — a server-generated PDF or JSON snapshot of one asset’s organization, client, project, declaration, assessment, review, and evidence history through a recorded chain head. Regeneration creates a new export. It is not a certification.
+- **Share link** — a revocable, optionally expiring capability URL for exactly one generated packet. The raw token is shown once; only a hash is stored.
 
 ## Screens (MVP)
 
@@ -76,6 +78,7 @@ Public:
 1. Landing page
 2. Sign in / sign up / password recovery
 3. Lot verification page (token or share path; read-only; no privileged data)
+   3a. Evidence packet share page (capability token; generic metadata; download only the intended packet)
 
 Authenticated:
 
@@ -84,6 +87,7 @@ Authenticated:
 6. Projects list and project detail
 7. Secure asset upload and asset detail
 8. Provenance declaration wizard and review
+   8a. Evidence packet export and share-link management
 9. Products list and product detail
 10. Lots list and lot detail (timeline of origin events)
 11. Event create form
@@ -295,6 +299,22 @@ A change request does not edit a reviewed or rejected version in place. Contribu
 Each asset has an append-only evidence chain. Events are integrity-verified, not a blockchain, and not absolutely tamper-proof. Successful verification means the stored rows still match their hashes and links. It does not prove a database administrator never rewrote the entire chain.
 
 Each event stores organization ID, asset ID, event type, event payload, actor, timestamp, previous hash, and event hash. Hashes use `canon-json.v1` and `sha256-hex.v1` as documented in `docs/ARCHITECTURE.md`. Raw prompts, signed URLs, credentials, and secrets must not appear in payloads. Changing canonicalization or hashing requires a versioned migration; existing chains must not be silently rewritten.
+
+## Evidence packets and client sharing (MVP)
+
+Owner, admin, and operator members may generate a PDF or JSON evidence packet for a ready asset that has a declaration. Viewers may download existing organization packets and cannot generate or share them. Packets are produced only in trusted server code from one internally consistent snapshot. The export records the exact evidence-event ID, hash, and sequence used as the chain head. History in that packet stops at that head. Later declaration, assessment, ruleset, or review versions are not substituted into a stored export. Regenerating creates a new export row and a new private object.
+
+Every packet includes: schema version `evidence-packet.v1`; organization, client, and project information; asset metadata and SHA-256; the declaration version and machine-readable answers; assessment answers and ruleset version when present; recommended disclosure; the human-review decision, reviewer ID, and review time when present; chronological evidence events through the recorded head; the server-side chain-verification result; export generation time; and a prominent non-certification disclaimer.
+
+The disclaimer states that the packet records supplied provenance information and review history; is not a government, legal, authenticity, ownership, or regulatory certification; does not independently prove that every submitted claim is true; does not make the system blockchain-based or absolutely tamper-proof; does not replace legal or compliance review; and that OriginLedger supports documentation and transparency workflows.
+
+Raw prompts are omitted by default. Including one requires an unchecked-by-default export-time control, a sensitivity warning, and a fresh server-side authorization for that specific export. Consent is not inferred from a previous export or browser state. The stored export records `includes_raw_prompt`. Raw prompts must not appear in logs, audit metadata, filenames, URLs, error messages, or share-page HTML.
+
+Generated bytes are stored in the private `evidence-packets` bucket under a server-owned `exports/{uuid}` key. The export row stores organization, asset, format, schema version, object key, content SHA-256, chain head, generation time, creator, and raw-prompt inclusion. Clients never receive storage paths or the service-role key. Downloads stream through authorized server endpoints.
+
+Share links are scoped to exactly one generated packet. Tokens are created with a CSPRNG and at least 256 bits of entropy. The raw token is returned only at creation. The database stores only the SHA-256 hash. Links may expire and may be revoked. Invalid, expired, and revoked tokens receive the same generic unavailable response. Possession of a token does not grant access to any other API. Public share pages use generic titles and descriptions, `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control: private, no-store`, and `Referrer-Policy: no-referrer`. They do not inherit authenticated tenant navigation and must not include organization names, asset names, tokens, or raw prompts in metadata.
+
+Share-token requests are rate-limited in Postgres before packet retrieval. The key is a SHA-256 of the client IP prefix (IPv4 /24 or IPv6 /64), not the raw token or full IP. The window is 15 minutes and the limit is 20 requests. Exceeded or failed limiter calls return the same generic unavailable response. Share-link access is not logged. Packet generation, share-link creation, and revocation are audited without raw tokens or raw prompts.
 
 ## Success criteria for the MVP
 

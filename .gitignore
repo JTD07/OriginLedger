@@ -21,6 +21,7 @@ tmp-*.jpg
 tmp-*.jpeg
 tmp-*.pdf
 tmp-*.webp
+tmp-*.json
 
 # next.js
 /.next/

@@ -53,6 +53,8 @@ There is no separate API cluster in the MVP. Server-only modules in `src/` hold 
 
 7. **Public verification pages (intentionally public).** Unauthenticated. Must only read rows and files explicitly published by the owning organization. Rate-limit and cache with care so they cannot enumerate unpublished lots.
 
+8. **Packet share pages (capability-URL public).** Unauthenticated. Must reveal only the single packet bound to a hashed token. Invalid, expired, revoked, and rate-limited requests share a generic unavailable response. These pages do not inherit `/app` navigation and must not expose tenant menus, internal comments, storage paths, or other assets.
+
 ```mermaid
 flowchart LR
   browser["Browser untrusted"]
@@ -93,7 +95,7 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 - Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
 - `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
 - Generated-compatible database types are checked in at `src/types/database.ts`. Regenerate with `pnpm supabase:types` after schema changes.
-- Private origin-record files live in the `origin-assets` bucket. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Lot-linked `documents` remain a later milestone.
+- Private origin-record files live in the `origin-assets` bucket. Generated evidence packets live in the separate private `evidence-packets` bucket under `exports/{uuid}` keys. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Packet downloads stream through authorized server endpoints. Lot-linked `documents` remain a later milestone.
 
 ## Environment variables
 
@@ -238,6 +240,13 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Why:** Identical inputs must produce identical recommendations. Application behavior must key off stable reason codes, not prose. The product supports documentation and transparency workflows and must not present automation as legal compliance.
 - **Consequences:** Editing a reviewed declaration creates a new version. Changing inputs invalidates the current assessment. Localization later adds catalogs beside `DISCLOSURE_TEMPLATES` (English is `en` for v1) without rewriting `evaluateDisclosure`. Invitations remain a later milestone; they are not part of Milestone 5.
 
+### ADR-014: Server-generated evidence packets and hashed share tokens
+
+- **Status:** Accepted
+- **Decision:** Generate PDF and JSON packets only on the server from `evidence-packet.v1`. Store objects in a private `evidence-packets` bucket. Share links store a SHA-256 of a 256-bit CSPRNG token. Rate-limit public share requests in Postgres with a replaceable limiter interface.
+- **Why:** Clients cannot be trusted to assemble a consistent snapshot or to keep raw tokens. A capability URL must not become a tenant-data oracle or a public bucket.
+- **Consequences:** Service role is required to stream share downloads and to increment rate-limit counters. Anon has no GRANT on export, share-link, or rate-limit tables. Schema changes require a new packet version.
+
 ### ADR-013: Tamper-evident evidence history
 
 - **Status:** Accepted
@@ -282,3 +291,32 @@ Trust boundary: the Next.js server and Postgres are trusted compute. A verifier 
 - Stripe customer and subscription identifiers live on `subscriptions` so a published organization row cannot leak billing IDs.
 - Lot publish/unpublish/archive is owner or admin. Operators may move `draft` to `active` and append events on `active` or `published` lots.
 - Lot-linked document bytes remain a later milestone. Project assets use the private `origin-assets` bucket introduced in Milestone 4.
+
+### Milestone 7 evidence packets (`evidence-packet.v1`)
+
+JSON packets are validated against a strict Zod schema before storage. Changing required fields, types, or nullability requires `evidence-packet.v2`. The PDF is rendered server-side from the same packet model with `pdf-lib`. User text is sanitized to WinAnsi-safe characters. Packets do not embed uploaded originals, remote scripts, or HTML.
+
+Snapshot rules:
+
+- Authorize the user for the organization, project, asset, and a mutating role before generation.
+- Load organization, project, current declaration version, current assessment, latest review, and evidence events in one consistent read.
+- Record the last loaded event as the chain head. Include history only through that event.
+- Persist the declaration version, assessment, ruleset version, and review decision present at generation time.
+- Hash the exact stored bytes with SHA-256 and keep that digest on `evidence_exports`.
+- Regeneration inserts a new row. Historical export metadata cannot be updated.
+
+Share-token rules:
+
+- 32 CSPRNG bytes, base64url. Store SHA-256 hex only. Compare hashes with a fixed-length timing-safe check after hashing the presented token.
+- Optional `expires_at`. Explicit revoke sets `status = revoked` and `revoked_at`.
+- Public lookup uses the service-role client after hashing because anon has no SELECT on export or link tables. The token is the credential.
+- Share access is not logged. Generation, create, and revoke write `audit_events` without tokens or raw prompts.
+
+Rate limiting:
+
+- Replaceable `ShareRateLimiter`. Production implementation: `public.consume_share_rate_limit` over `share_rate_limits`.
+- Key: SHA-256 of `share-rate:{ipv4/24|ipv6/64}`. Window: 900 seconds. Limit: 20 requests.
+- Apply before token lookup and packet download where practical. Fail closed to the generic unavailable response.
+- Authenticated and anonymous clients cannot execute the limiter or read the table.
+
+Share-page headers: `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, plus matching robots/referrer meta tags. Title and description stay `Shared document` / `A documentation packet is available through a private link` for valid and invalid tokens.

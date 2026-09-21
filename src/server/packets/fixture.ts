@@ -1,0 +1,113 @@
+import {
+  EVIDENCE_PACKET_SCHEMA_VERSION,
+  PACKET_DISCLAIMER,
+  type EvidencePacketV1,
+} from "./schema";
+
+export const EVIDENCE_PACKET_V1_FIXTURE: EvidencePacketV1 = {
+  schemaVersion: EVIDENCE_PACKET_SCHEMA_VERSION,
+  generatedAt: "2026-09-20T16:00:00.000Z",
+  includesRawPrompt: false,
+  disclaimer: {
+    recordsSuppliedInformation: PACKET_DISCLAIMER.recordsSuppliedInformation,
+    isCertification: PACKET_DISCLAIMER.isCertification,
+    independentlyProvesClaims: PACKET_DISCLAIMER.independentlyProvesClaims,
+    isBlockchain: PACKET_DISCLAIMER.isBlockchain,
+    isAbsolutelyTamperProof: PACKET_DISCLAIMER.isAbsolutelyTamperProof,
+    replacesLegalReview: PACKET_DISCLAIMER.replacesLegalReview,
+    text: PACKET_DISCLAIMER.text,
+  },
+  organization: {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    name: "Northwind Docs",
+  },
+  project: {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    name: "Crate photography",
+  },
+  client: {
+    organizationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    organizationName: "Northwind Docs",
+  },
+  asset: {
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    clientFilename: "lot.png",
+    verifiedMimeType: "image/png",
+    byteSize: 67,
+    sha256: "a".repeat(64),
+    status: "ready",
+  },
+  declaration: {
+    id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    versionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    versionNumber: 1,
+    status: "reviewed",
+    answers: {
+      creationMode: "ai_generated",
+      provider: "Northwind",
+      model: "OriginDraw",
+      modelVersion: "3",
+      generationDate: "2026-09-01",
+      sourceNotes: null,
+      promptSummary: "Studio photograph of a crate.",
+      rawPrompt: null,
+      humanEdits: "substantial",
+      distributionRegions: ["us"],
+      contentCategory: "product_documentation",
+      realisticDepiction: "stylized",
+      publicInterest: "none",
+      editorialReview: "internally_reviewed",
+    },
+  },
+  assessment: {
+    rulesetVersion: "disclosure-rules.v1",
+    recommendationLevel: "limited",
+    reasonCodes: ["ai_generated_content"],
+    templateId: "ai_generated_limited",
+    visibleDisclosureText: "This image was generated with AI assistance.",
+    humanReviewNotice:
+      "A human reviewer must make the final disclosure decision.",
+    status: "current",
+  },
+  review: {
+    decision: "accepted",
+    reviewerId: "11111111-1111-4111-8111-111111111111",
+    reviewedAt: "2026-09-20T15:00:00.000Z",
+    notes: null,
+  },
+  evidence: {
+    chainHead: {
+      eventId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      eventHash: "b".repeat(64),
+      sequence: 2,
+    },
+    verification: {
+      ok: true,
+      checked: 2,
+      brokenSequence: null,
+      reason: "ok",
+    },
+    events: [
+      {
+        eventId: "99999999-9999-4999-8999-999999999999",
+        sequence: 1,
+        eventType: "declaration_submitted",
+        eventAt: "2026-09-20T14:00:00.000Z",
+        actor: "11111111-1111-4111-8111-111111111111",
+        eventHash: "c".repeat(64),
+        previousHash: "0".repeat(64),
+        payload: { action: "submit" },
+      },
+      {
+        eventId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        sequence: 2,
+        eventType: "review_approved",
+        eventAt: "2026-09-20T15:00:00.000Z",
+        actor: "11111111-1111-4111-8111-111111111111",
+        eventHash: "b".repeat(64),
+        previousHash: "c".repeat(64),
+        payload: { action: "approve" },
+      },
+    ],
+  },
+};

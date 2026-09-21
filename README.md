@@ -54,7 +54,7 @@ pnpm supabase:stop
 
 `pnpm supabase:start` prints `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the service-role key. Put those values in `.env.local`. Keep the service-role key server-only. Local Auth email confirmations are disabled so sign-up can create a session immediately; password-reset mail is still captured by Inbucket.
 
-After sign-in, `/app` can create an organization and project, then upload a PDF, JPEG, PNG, or WebP (25 MB maximum) to private storage. Fixture notes are in `docs/TESTING_ASSETS.md`.
+After sign-in, `/app` can create an organization and project, then upload a PDF, JPEG, PNG, or WebP (25 MB maximum) to private storage. Owner, admin, and operator members can generate PDF or JSON evidence packets from a declaration snapshot and create revocable share links. Public share pages live at `/share/[token]`, outside `/app`, and stream packets from the private `evidence-packets` bucket. Fixture notes are in `docs/TESTING_ASSETS.md`.
 
 Sign-in lives at `/sign-in`, sign-up at `/sign-up`, recovery at `/recover`, and the signed-in shell at `/app`. Email confirmation and recovery links use `/auth/confirm`.
 

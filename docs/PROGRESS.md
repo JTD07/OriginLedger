@@ -18,8 +18,8 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Versioned declarations, deterministic recommendations, human review. Not invitations.
 - [x] **Milestone 6 — Human review and tamper-evident evidence history**
       Privileged review decisions, change-request responses, and an integrity-verified append-only chain. Not products or lots.
-- [ ] **Milestone 7 — Documents**
-      Attach verified assets to lots/events; supersede without deleting history.
+- [x] **Milestone 7 — PDF/JSON evidence packets and secure client sharing**
+      Server-generated packets from a frozen snapshot, private storage, and revocable hashed share links. Not public lot verification.
 - [ ] **Milestone 8 — Public verification**
       Publish/unpublish lot pages. Unauthenticated access only to published data.
 - [ ] **Milestone 9 — Stripe billing**
@@ -335,4 +335,53 @@ Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in t
 - Changing `canon-json.v1` / `sha256-hex.v1` requires an explicit versioned migration.
 - Products and lots remain unimplemented on purpose. They are not part of this milestone.
 
-**Next step:** Milestone 7 — Documents. Do not start it until requested.
+**Next step:** Milestone 7 — PDF/JSON evidence packets and secure client sharing. Completed 2026-09-20.
+
+### Milestone 7
+
+**Date:** 2026-09-20
+
+**Intent:** Server-generated PDF/JSON evidence packets and revocable hashed share links only. Relabel the stale “Documents” milestone. Do not implement public lot verification or start Milestone 8.
+
+**Decisions:**
+
+- Packets use schema `evidence-packet.v1`. JSON is Zod-validated before storage. PDF is rendered with `pdf-lib` from the same model. Regeneration inserts a new `evidence_exports` row and a new private object.
+- The export freezes the current declaration version, assessment, ruleset version, review decision, and evidence events through the recorded chain head. Later versions are not substituted.
+- Raw prompts are omitted unless the exporter checks an unchecked-by-default control for that specific export. `includes_raw_prompt` is stored. Raw prompts and raw tokens are stripped from audit metadata.
+- Objects live in the private `evidence-packets` bucket at `exports/{uuid}`. Downloads stream through authorized server endpoints. The bucket is never public.
+- Share tokens are 32 CSPRNG bytes (base64url). Only SHA-256 hex is stored. Links may expire and may be revoked. Invalid, expired, revoked, and rate-limited requests share a generic unavailable response.
+- Public share rate limiting uses Postgres `share_rate_limits` via replaceable `ShareRateLimiter`. Key: SHA-256 of `share-rate:{ipv4/24|ipv6/64}`. Window: 900 seconds. Limit: 20. Share-link access is not logged.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                                                                |
+| `pnpm supabase:start` | Passed. Local stack started from backup; hosted/production projects were not touched.                                                                                  |
+| `pnpm supabase:reset` | Passed. Applied prior migrations plus `20260920233000_evidence_packet_enums.sql` and `20260920233001_evidence_packets.sql`.                                            |
+| `pnpm supabase:test`  | Passed. 10 files, 209 tests (previous 165 plus packet RLS, grants, rate-limit, and immutability cases).                                                                |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                                                         |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (26 files, 119 tests).                                                                                                     |
+| `pnpm build`          | Passed. Routes include `/app/assets/[assetId]/exports`, `/share/[token]`, and `/share/[token]/download`.                                                               |
+| `pnpm test:e2e`       | Passed. 18 Chromium tests, including authorized JSON/PDF generation, raw-prompt default omission, share headers, revocation, and existing review/upload/auth coverage. |
+
+The first `pnpm test:e2e` attempt failed because `getByLabel("Raw prompt")` also matched the capture checkbox, and a declaration draft-resume assertion raced a previous “Draft saved.” notice. The packet test now targets the Raw prompt textbox, and the declaration test waits for Save draft to finish before reload. Those are not packet-logic failures.
+
+Git tracking: `.env.example` is tracked. `.env.local`, generated packets, raw prompts, share tokens, and `tmp-*.json|pdf` are gitignored and are not in the index.
+
+**Security notes:**
+
+- Anon has no GRANT on `evidence_exports`, `evidence_share_links`, or `share_rate_limits`, and cannot execute `consume_share_rate_limit`.
+- Authenticated clients cannot UPDATE or DELETE exports. Share-link updates are revoke-only. Token hashes and identity columns are immutable.
+- Public share pages use generic metadata, `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control: private, no-store`, and `Referrer-Policy: no-referrer`. They do not inherit `/app` navigation.
+- Service role streams share downloads after hashing the presented token. Clients never receive storage paths or the service-role key.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to a production project from this milestone.
+- Share-link access is intentionally not logged. Generation, create, and revoke are audited without tokens or raw prompts.
+- Token expiry is covered by unit and validity checks, not a real-time Playwright wait.
+- Rate-limit enforcement is covered in pgTAP and key hashing tests, not by issuing 20 public requests in e2e.
+- Changing `evidence-packet.v1` requires a new schema version.
+
+**Next step:** Milestone 8 — Public verification. Do not start it until requested.
