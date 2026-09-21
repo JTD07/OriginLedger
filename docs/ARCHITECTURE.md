@@ -238,11 +238,38 @@ Copy `.env.example` to `.env.local` for local work. Never commit `.env.local`.
 - **Why:** Identical inputs must produce identical recommendations. Application behavior must key off stable reason codes, not prose. The product supports documentation and transparency workflows and must not present automation as legal compliance.
 - **Consequences:** Editing a reviewed declaration creates a new version. Changing inputs invalidates the current assessment. Localization later adds catalogs beside `DISCLOSURE_TEMPLATES` (English is `en` for v1) without rewriting `evaluateDisclosure`. Invitations remain a later milestone; they are not part of Milestone 5.
 
+### ADR-013: Tamper-evident evidence history
+
+- **Status:** Accepted
+- **Decision:** Record declaration and review actions as append-only `evidence_events` chained per asset. Canonicalize payloads with `canon-json.v1`, hash with SHA-256 hex (`sha256-hex.v1`), and verify only on the server. Describe the feature as tamper-evident or integrity-verified. Do not call it a blockchain or claim it is absolutely immutable or tamper-proof.
+- **Why:** Review decisions need an auditable history that detects later row-level edits. A hash chain raises the cost of silent tampering without pretending the database administrator is untrusted.
+- **Consequences:** Event creation is serialized per asset with a transaction advisory lock plus unique `(asset_id, sequence)` and `(asset_id, previous_hash)` constraints. Domain transitions and their evidence events are applied in one database function. Changing the hash contract requires a new versioned migration.
+
+### Milestone 6 canonicalization (`canon-json.v1`)
+
+Hash input object keys, after sorting, are exactly: `actor`, `asset_id`, `event_payload`, `event_type`, `organization_id`, `previous_hash`, `timestamp`.
+
+| Kind        | Rule                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| Object keys | Sorted by UTF-16 code-unit order (ECMAScript string `<`)                                    |
+| Arrays      | Preserve order; each element is canonicalized                                               |
+| Null        | Encoded as `null`. Omitted keys are absent and are not encoded as null                      |
+| Strings     | JSON-escaped with `JSON.stringify` / `to_json`                                              |
+| Unicode     | Canonical JSON text is hashed as UTF-8 bytes                                                |
+| Numbers     | Finite safe integers only, decimal form without exponent or leading zeros (`0`, `-2`, `42`) |
+| Booleans    | `true` / `false`                                                                            |
+| Timestamps  | UTC ISO-8601 with milliseconds: `YYYY-MM-DDTHH:MM:SS.sssZ`                                  |
+| Forbidden   | `NaN`, `Infinity`, floats, `undefined`, functions, secrets, raw prompts, signed URLs        |
+
+`event_hash` is lowercase hex SHA-256 of those UTF-8 bytes. Genesis `previous_hash` is 64 zero hex characters. Sequence starts at `1`.
+
+Trust boundary: the Next.js server and Postgres are trusted compute. A verifier recomputes hashes and links and reports the first break. It never repairs history. A successful result does not prove an administrator never replaced every row in the chain.
+
 ### Milestone 5 declaration versioning
 
 - One declaration lineage exists per ready asset.
 - Version numbers increment. `superseded_from_id` records lineage.
-- At most one working version (`draft` or `pending_review`) exists. Reviewed versions are immutable.
+- At most one working version (`draft`, `pending_review`, or `changes_requested`) exists. Reviewed and rejected versions are immutable.
 - Assessments store `ruleset_version`, reason codes, template id, interpolation data, rendered English text, and the human-review notice. Historical assessments keep the declaration version and ruleset they were produced with.
 - `audit_events` are append-only. Metadata never includes raw prompts.
 

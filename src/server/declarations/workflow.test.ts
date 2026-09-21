@@ -13,6 +13,8 @@ describe("declaration workflow", () => {
     expect(canReviewDeclarations("viewer")).toBe(false);
     expect(canReviewDeclarations("admin")).toBe(true);
     expect(canReviewDeclarations("owner")).toBe(true);
+    expect(canReviewDeclarations("reviewer")).toBe(true);
+    expect(canMutateDeclarations("reviewer")).toBe(false);
   });
 
   test("viewers cannot mutate declarations", () => {
@@ -25,9 +27,11 @@ describe("declaration workflow", () => {
     expect(planDeclarationEdit("pending_review")).toBe("return_to_draft");
   });
 
-  test("only draft and pending review are working versions", () => {
+  test("working versions exclude reviewed and rejected history", () => {
     expect(isWorkingVersion("draft")).toBe(true);
     expect(isWorkingVersion("pending_review")).toBe(true);
+    expect(isWorkingVersion("changes_requested")).toBe(true);
     expect(isWorkingVersion("reviewed")).toBe(false);
+    expect(isWorkingVersion("rejected")).toBe(false);
   });
 });

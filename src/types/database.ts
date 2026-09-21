@@ -194,6 +194,71 @@ export type Database = {
           },
         ];
       };
+      evidence_events: {
+        Row: {
+          actor: string;
+          asset_id: string;
+          canonicalization_version: string;
+          created_at: string;
+          declaration_id: string | null;
+          declaration_version_id: string | null;
+          event_at: string;
+          event_hash: string;
+          event_payload: Json;
+          event_type: Database["public"]["Enums"]["evidence_event_type"];
+          hash_version: string;
+          id: string;
+          organization_id: string;
+          previous_hash: string;
+          project_id: string;
+          sequence: number;
+        };
+        Insert: {
+          actor: string;
+          asset_id: string;
+          canonicalization_version?: string;
+          created_at?: string;
+          declaration_id?: string | null;
+          declaration_version_id?: string | null;
+          event_at: string;
+          event_hash: string;
+          event_payload?: Json;
+          event_type: Database["public"]["Enums"]["evidence_event_type"];
+          hash_version?: string;
+          id?: string;
+          organization_id: string;
+          previous_hash: string;
+          project_id: string;
+          sequence: number;
+        };
+        Update: {
+          actor?: string;
+          asset_id?: string;
+          canonicalization_version?: string;
+          created_at?: string;
+          declaration_id?: string | null;
+          declaration_version_id?: string | null;
+          event_at?: string;
+          event_hash?: string;
+          event_payload?: Json;
+          event_type?: Database["public"]["Enums"]["evidence_event_type"];
+          hash_version?: string;
+          id?: string;
+          organization_id?: string;
+          previous_hash?: string;
+          project_id?: string;
+          sequence?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_events_asset_org_fkey";
+            columns: ["asset_id", "project_id", "organization_id"];
+            isOneToOne: false;
+            referencedRelation: "assets";
+            referencedColumns: ["id", "project_id", "organization_id"];
+          },
+        ];
+      };
       invitations: {
         Row: {
           accepted_by: string | null;
@@ -826,7 +891,51 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      apply_declaration_transition: {
+        Args: {
+          p_action: string;
+          p_asset_id: string;
+          p_declaration_version_id: string;
+          p_expected_status: Database["public"]["Enums"]["declaration_version_status"];
+          p_notes: string;
+        };
+        Returns: Json;
+      };
       create_organization: { Args: { p_name: string }; Returns: string };
+      dblink: { Args: { "": string }; Returns: Record<string, unknown>[] };
+      dblink_cancel_query: { Args: { "": string }; Returns: string };
+      dblink_close: { Args: { "": string }; Returns: string };
+      dblink_connect: { Args: { "": string }; Returns: string };
+      dblink_connect_u: { Args: { "": string }; Returns: string };
+      dblink_current_query: { Args: never; Returns: string };
+      dblink_disconnect:
+        | { Args: never; Returns: string }
+        | { Args: { "": string }; Returns: string };
+      dblink_error_message: { Args: { "": string }; Returns: string };
+      dblink_exec: { Args: { "": string }; Returns: string };
+      dblink_fdw_validator: {
+        Args: { catalog: unknown; options: string[] };
+        Returns: undefined;
+      };
+      dblink_get_connections: { Args: never; Returns: string[] };
+      dblink_get_notify:
+        | { Args: { conname: string }; Returns: Record<string, unknown>[] }
+        | { Args: never; Returns: Record<string, unknown>[] };
+      dblink_get_pkey: {
+        Args: { "": string };
+        Returns: Database["public"]["CompositeTypes"]["dblink_pkey_results"][];
+        SetofOptions: {
+          from: "*";
+          to: "dblink_pkey_results";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      dblink_get_result: {
+        Args: { "": string };
+        Returns: Record<string, unknown>[];
+      };
+      dblink_is_busy: { Args: { "": string }; Returns: number };
     };
     Enums: {
       assessment_status: "current" | "superseded" | "invalidated";
@@ -843,20 +952,34 @@ export type Database = {
         | "assessment_invalidated"
         | "assessment_superseded"
         | "declaration_reviewed";
-      declaration_version_status: "draft" | "pending_review" | "reviewed";
+      declaration_version_status:
+        | "draft"
+        | "pending_review"
+        | "reviewed"
+        | "changes_requested"
+        | "rejected";
       document_status: "uploaded" | "attached" | "superseded";
+      evidence_event_type:
+        | "declaration_submitted"
+        | "review_approved"
+        | "review_rejected"
+        | "changes_requested"
+        | "changes_responded";
       invitation_status: "pending" | "accepted" | "expired" | "revoked";
       lot_status: "draft" | "active" | "published" | "archived";
-      membership_role: "owner" | "admin" | "operator" | "viewer";
+      membership_role: "owner" | "admin" | "operator" | "viewer" | "reviewer";
       membership_status: "invited" | "active" | "expired" | "revoked";
       origin_event_kind:
         "received" | "processed" | "transferred" | "documented";
       origin_event_status: "recorded" | "superseded";
-      review_decision: "accepted" | "returned";
+      review_decision: "accepted" | "returned" | "rejected";
       subscription_status: "incomplete" | "active" | "past_due" | "canceled";
     };
     CompositeTypes: {
-      [_ in never]: never;
+      dblink_pkey_results: {
+        position: number | null;
+        colname: string | null;
+      };
     };
   };
 };
@@ -997,15 +1120,28 @@ export const Constants = {
         "assessment_superseded",
         "declaration_reviewed",
       ],
-      declaration_version_status: ["draft", "pending_review", "reviewed"],
+      declaration_version_status: [
+        "draft",
+        "pending_review",
+        "reviewed",
+        "changes_requested",
+        "rejected",
+      ],
       document_status: ["uploaded", "attached", "superseded"],
+      evidence_event_type: [
+        "declaration_submitted",
+        "review_approved",
+        "review_rejected",
+        "changes_requested",
+        "changes_responded",
+      ],
       invitation_status: ["pending", "accepted", "expired", "revoked"],
       lot_status: ["draft", "active", "published", "archived"],
-      membership_role: ["owner", "admin", "operator", "viewer"],
+      membership_role: ["owner", "admin", "operator", "viewer", "reviewer"],
       membership_status: ["invited", "active", "expired", "revoked"],
       origin_event_kind: ["received", "processed", "transferred", "documented"],
       origin_event_status: ["recorded", "superseded"],
-      review_decision: ["accepted", "returned"],
+      review_decision: ["accepted", "returned", "rejected"],
       subscription_status: ["incomplete", "active", "past_due", "canceled"],
     },
   },

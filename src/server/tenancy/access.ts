@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 const MUTATING_ROLES = ["owner", "admin", "operator"] as const;
-const REVIEWING_ROLES = ["owner", "admin"] as const;
+const REVIEWING_ROLES = ["owner", "admin", "reviewer"] as const;
 
 export type MembershipRole = Database["public"]["Enums"]["membership_role"];
 

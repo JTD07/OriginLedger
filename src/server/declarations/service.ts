@@ -9,15 +9,20 @@ import { draftFromStored, storedPayloadFromDraft } from "./payload";
 import {
   completeDraft,
   declarationDraftSchema,
+  declarationSubmitSchema,
   emptyDraft,
   type DeclarationDraft,
 } from "./schema";
+import { canMutateDeclarations, planDeclarationEdit } from "./workflow";
 import {
-  canMutateDeclarations,
-  canReviewDeclarations,
-  planDeclarationEdit,
-  type ReviewDecision,
-} from "./workflow";
+  evaluateTransition,
+  isDeclarationRole,
+  isDeclarationVersionStatus,
+  sanitizeNotes,
+  type DeclarationRole,
+  type DeclarationVersionStatus,
+  type ReviewAction,
+} from "@/server/review/transitions";
 import type {
   AssessmentView,
   DeclarationVersionView,
@@ -379,19 +384,21 @@ async function updateWorkingVersion(
   | { ok: false; error: DeclarationServiceError }
 > {
   const stored = storedPayloadFromDraft(draft);
+  const nextStatus =
+    current.status === "changes_requested" ? "changes_requested" : "draft";
   const updated = await client
     .from("provenance_declaration_versions")
     .update({
       payload: stored.payload,
       raw_prompt_capture_enabled: stored.rawPromptCaptureEnabled,
       raw_prompt: stored.rawPrompt,
-      status: "draft",
+      status: nextStatus,
     })
     .eq("id", current.id)
     .eq("organization_id", asset.organization_id)
     .eq("project_id", asset.project_id)
     .eq("asset_id", asset.id)
-    .in("status", ["draft", "pending_review"])
+    .eq("status", current.status)
     .select("id")
     .single();
 
@@ -472,7 +479,17 @@ export async function submitDeclaration(
       issues?: { path: string; message: string }[];
     }
 > {
-  const saved = await saveDeclarationDraft(client, userId, assetId, input);
+  const submitted = declarationSubmitSchema.safeParse(input);
+  if (!submitted.success) {
+    return { ok: false, error: "invalid" };
+  }
+
+  const saved = await saveDeclarationDraft(
+    client,
+    userId,
+    assetId,
+    submitted.data,
+  );
   if (!saved.ok) {
     return saved;
   }
@@ -485,23 +502,14 @@ export async function submitDeclaration(
     return { ok: false, error: "unauthorized" };
   }
 
-  const draft = declarationDraftSchema.parse(input);
-  const evaluated = evaluateDisclosure(completeDraft(draft));
+  const evaluated = evaluateDisclosure(completeDraft(submitted.data));
   if (!evaluated.ok) {
     return { ok: false, error: "invalid", issues: evaluated.issues };
   }
 
-  const pending = await client
-    .from("provenance_declaration_versions")
-    .update({ status: "pending_review" })
-    .eq("id", saved.versionId)
-    .eq("organization_id", authorized.asset.organization_id)
-    .eq("asset_id", authorized.asset.id)
-    .in("status", ["draft", "pending_review"])
-    .select("*")
-    .single();
-
-  if (pending.error || !pending.data) {
+  const versions = await loadVersions(client, saved.declarationId);
+  const current = versions.find((version) => version.id === saved.versionId);
+  if (!current) {
     return { ok: false, error: "conflict" };
   }
 
@@ -522,6 +530,26 @@ export async function submitDeclaration(
 
   if (inserted.error || !inserted.data) {
     return { ok: false, error: "conflict" };
+  }
+
+  if (
+    !isDeclarationVersionStatus(current.status) ||
+    !isDeclarationRole(authorized.access.role)
+  ) {
+    return { ok: false, error: "conflict" };
+  }
+  const action: ReviewAction =
+    current.status === "changes_requested" ? "respond" : "submit";
+  const applied = await applyDeclarationTransition(client, {
+    assetId: authorized.asset.id,
+    versionId: saved.versionId,
+    action,
+    expectedStatus: current.status,
+    notes: sanitizeNotes(submitted.data.responseNotes),
+    role: authorized.access.role,
+  });
+  if (!applied.ok) {
+    return applied;
   }
 
   return {
@@ -560,7 +588,7 @@ export async function startDeclarationEdit(
   if (!current) {
     return { ok: false, error: "conflict" };
   }
-  if (current.status !== "reviewed") {
+  if (current.status !== "reviewed" && current.status !== "rejected") {
     return { ok: true, declarationId: declaration.id, versionId: current.id };
   }
 
@@ -574,19 +602,74 @@ export async function startDeclarationEdit(
   );
 }
 
+export async function applyDeclarationTransition(
+  client: SupabaseClient<Database>,
+  input: {
+    assetId: string;
+    versionId: string;
+    action: ReviewAction;
+    expectedStatus: DeclarationVersionStatus;
+    notes: string;
+    role: DeclarationRole;
+  },
+): Promise<{ ok: true } | { ok: false; error: DeclarationServiceError }> {
+  const evaluated = evaluateTransition({
+    from: input.expectedStatus,
+    action: input.action,
+    role: input.role,
+    notes: input.notes,
+  });
+  if (!evaluated.ok) {
+    if (evaluated.error === "invalid_notes") {
+      return { ok: false, error: "invalid" };
+    }
+    if (evaluated.error === "forbidden_review") {
+      return { ok: false, error: "forbidden_review" };
+    }
+    if (evaluated.error === "unauthorized") {
+      return { ok: false, error: "unauthorized" };
+    }
+    return { ok: false, error: "conflict" };
+  }
+
+  const { error } = await client.rpc("apply_declaration_transition", {
+    p_asset_id: input.assetId,
+    p_declaration_version_id: input.versionId,
+    p_action: input.action,
+    p_expected_status: input.expectedStatus,
+    p_notes: sanitizeNotes(input.notes),
+  });
+
+  if (error) {
+    if (error.code === "42501") {
+      return {
+        ok: false,
+        error:
+          input.action === "approve" ||
+          input.action === "reject" ||
+          input.action === "request_changes"
+            ? "forbidden_review"
+            : "unauthorized",
+      };
+    }
+    if (error.code === "40001") {
+      return { ok: false, error: "conflict" };
+    }
+    return { ok: false, error: "conflict" };
+  }
+  return { ok: true };
+}
+
 export async function recordDeclarationReview(
   client: SupabaseClient<Database>,
   userId: string,
   assetId: string,
-  decision: ReviewDecision,
+  action: ReviewAction,
   notes: string,
 ): Promise<{ ok: true } | { ok: false; error: DeclarationServiceError }> {
   const authorized = await authorizeAsset(client, userId, assetId);
   if (!authorized.ok) {
     return { ok: false, error: authorized.error };
-  }
-  if (!canReviewDeclarations(authorized.access.role)) {
-    return { ok: false, error: "forbidden_review" };
   }
 
   const declaration = await loadDeclarationForAsset(client, assetId);
@@ -598,28 +681,22 @@ export async function recordDeclarationReview(
   const current = versions.find(
     (version) => version.id === declaration.current_version_id,
   );
-  if (!current || current.status !== "pending_review") {
+  if (!current) {
+    return { ok: false, error: "conflict" };
+  }
+  if (
+    !isDeclarationVersionStatus(current.status) ||
+    !isDeclarationRole(authorized.access.role)
+  ) {
     return { ok: false, error: "conflict" };
   }
 
-  const inserted = await client
-    .from("provenance_reviews")
-    .insert({
-      organization_id: authorized.asset.organization_id,
-      project_id: authorized.asset.project_id,
-      asset_id: authorized.asset.id,
-      declaration_id: declaration.id,
-      declaration_version_id: current.id,
-      decision,
-      notes: notes.trim().length > 0 ? notes.trim() : null,
-      created_by: userId,
-    })
-    .select("id")
-    .single();
-
-  if (inserted.error || !inserted.data) {
-    return { ok: false, error: "conflict" };
-  }
-
-  return { ok: true };
+  return applyDeclarationTransition(client, {
+    assetId: authorized.asset.id,
+    versionId: current.id,
+    action,
+    expectedStatus: current.status,
+    notes,
+    role: authorized.access.role,
+  });
 }

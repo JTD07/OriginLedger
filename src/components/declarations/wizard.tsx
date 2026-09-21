@@ -85,6 +85,7 @@ export function DeclarationWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [responseNotes, setResponseNotes] = useState("");
   const errorHeading = useRef<HTMLHeadingElement>(null);
   const formId = useId();
 
@@ -102,6 +103,7 @@ export function DeclarationWizard({
   const readOnly =
     !workspace.canMutate ||
     status === "reviewed" ||
+    status === "rejected" ||
     status === "pending_review";
 
   function update<K extends keyof DeclarationDraft>(
@@ -118,7 +120,6 @@ export function DeclarationWizard({
       return false;
     }
     setMessage("Draft saved.");
-    router.refresh();
     return true;
   }
 
@@ -164,7 +165,10 @@ export function DeclarationWizard({
     }
     setErrors({});
     setPending(true);
-    const result = await submitDeclarationAction(assetId, values);
+    const result = await submitDeclarationAction(assetId, {
+      ...values,
+      responseNotes,
+    });
     setPending(false);
     if (!result.ok) {
       setMessage(result.message);
@@ -249,7 +253,36 @@ export function DeclarationWizard({
         </p>
       ))}
 
-      {status === "reviewed" && workspace.canMutate ? (
+      <p>
+        <a className="underline" href={`/app/assets/${assetId}/history`}>
+          Integrity-verified history
+        </a>
+      </p>
+
+      {workspace.reviews.length > 0 ? (
+        <section className="flex flex-col gap-2 border border-zinc-200 p-4">
+          <h2 className="text-lg font-semibold">Review history</h2>
+          <ol className="flex flex-col gap-2">
+            {workspace.reviews.map((review) => (
+              <li key={review.id}>
+                <p>
+                  {review.decision === "accepted"
+                    ? "Approved"
+                    : review.decision === "rejected"
+                      ? "Rejected"
+                      : "Changes requested"}
+                </p>
+                {review.notes ? (
+                  <p className="whitespace-pre-wrap">{review.notes}</p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
+      {(status === "reviewed" || status === "rejected") &&
+      workspace.canMutate ? (
         <button
           type="button"
           className="w-fit rounded-md border border-zinc-300 px-4 py-2"
@@ -268,12 +301,19 @@ export function DeclarationWizard({
       workspace.canMutate &&
       !workspace.canReview ? (
         <p role="status">
-          Waiting for an owner or admin to record the human review decision.
-          Operators cannot complete review.
+          Waiting for an owner, admin, or reviewer to record the human review
+          decision. Contributors cannot approve, reject, or request changes.
         </p>
       ) : null}
 
-      {readOnly && status === "reviewed" ? (
+      {status === "changes_requested" ? (
+        <p role="status">
+          A reviewer requested changes. Contributors may edit this version and
+          resubmit. The previous review history is kept.
+        </p>
+      ) : null}
+
+      {readOnly && (status === "reviewed" || status === "rejected") ? (
         <DeclarationSummary
           values={workspace.currentVersion?.draft ?? values}
         />
@@ -589,7 +629,22 @@ export function DeclarationWizard({
             </div>
           ) : null}
 
-          {step.id === "review" ? <DeclarationSummary values={values} /> : null}
+          {step.id === "review" ? (
+            <div className="flex flex-col gap-3">
+              <DeclarationSummary values={values} />
+              {status === "changes_requested" ? (
+                <label className="flex flex-col gap-1">
+                  <span>Response to the change request</span>
+                  <textarea
+                    className="rounded-md border border-zinc-300 px-3 py-2"
+                    value={responseNotes}
+                    onChange={(event) => setResponseNotes(event.target.value)}
+                    required
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
             {stepIndex > 0 ? (
@@ -615,7 +670,9 @@ export function DeclarationWizard({
                 className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
                 disabled={pending}
               >
-                Submit for human review
+                {status === "changes_requested"
+                  ? "Submit response"
+                  : "Submit for human review"}
               </button>
             ) : (
               <button
@@ -652,7 +709,9 @@ function HumanReviewForm({
   assetId: string;
   pending: boolean;
 }) {
-  const [decision, setDecision] = useState<"accepted" | "returned">("accepted");
+  const [action, setAction] = useState<
+    "approve" | "reject" | "request_changes"
+  >("approve");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -666,7 +725,7 @@ function HumanReviewForm({
         setBusy(true);
         const result = await recordDeclarationReviewAction({
           assetId,
-          decision,
+          action,
           notes,
         });
         setBusy(false);
@@ -688,26 +747,39 @@ function HumanReviewForm({
           <input
             type="radio"
             name="decision"
-            checked={decision === "accepted"}
-            onChange={() => setDecision("accepted")}
+            checked={action === "approve"}
+            onChange={() => setAction("approve")}
           />
-          Accept recommendation for this version
+          Approve this version
         </label>
         <label className="flex gap-2">
           <input
             type="radio"
             name="decision"
-            checked={decision === "returned"}
-            onChange={() => setDecision("returned")}
+            checked={action === "request_changes"}
+            onChange={() => setAction("request_changes")}
           />
-          Return to draft
+          Request changes
+        </label>
+        <label className="flex gap-2">
+          <input
+            type="radio"
+            name="decision"
+            checked={action === "reject"}
+            onChange={() => setAction("reject")}
+          />
+          Reject this version
         </label>
       </fieldset>
       <label className="flex flex-col gap-1">
-        <span>Review notes</span>
+        <span>
+          Review notes
+          {action === "approve" ? " (optional)" : " (required)"}
+        </span>
         <textarea
           className="rounded-md border border-zinc-300 px-3 py-2"
           value={notes}
+          required={action !== "approve"}
           onChange={(event) => setNotes(event.target.value)}
         />
       </label>

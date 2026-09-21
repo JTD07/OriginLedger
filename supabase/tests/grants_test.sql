@@ -1,5 +1,5 @@
 begin;
-select plan(49);
+select plan(56);
 
 select ok(
   not has_table_privilege('anon', 'public.memberships', 'select'),
@@ -146,6 +146,14 @@ select ok(
   not has_table_privilege('anon', 'public.audit_events', 'select'),
   'anon has no select grant on audit_events'
 );
+select ok(
+  not has_table_privilege('anon', 'public.evidence_events', 'select'),
+  'anon has no select grant on evidence_events'
+);
+select ok(
+  not has_table_privilege('anon', 'public.evidence_events', 'insert,update,delete'),
+  'anon has no write grant on evidence_events'
+);
 
 select ok(
   not has_table_privilege('authenticated', 'public.provenance_declarations', 'delete'),
@@ -175,6 +183,18 @@ select ok(
   not has_table_privilege('authenticated', 'public.audit_events', 'update'),
   'authenticated cannot update audit_events'
 );
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_events', 'insert'),
+  'authenticated cannot insert evidence_events'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_events', 'update'),
+  'authenticated cannot update evidence_events'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.evidence_events', 'delete'),
+  'authenticated cannot delete evidence_events'
+);
 
 select ok(
   has_table_privilege('authenticated', 'public.provenance_declarations', 'select'),
@@ -187,6 +207,14 @@ select ok(
 select ok(
   has_table_privilege('service_role', 'public.audit_events', 'select,insert,update,delete'),
   'service_role retains full access to audit_events'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.evidence_events', 'select'),
+  'authenticated has select grant on evidence_events'
+);
+select ok(
+  has_table_privilege('service_role', 'public.evidence_events', 'select,insert,update,delete'),
+  'service_role retains full access to evidence_events'
 );
 
 select isnt_empty(

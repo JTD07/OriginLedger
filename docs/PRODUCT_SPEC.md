@@ -40,13 +40,14 @@ Every business record belongs to exactly one organization. Queries and mutations
 
 ## User roles
 
-| Role           | Scope           | Capabilities                                                                                              |
-| -------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
-| Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization                       |
-| Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings |
-| Operator       | Organization    | Create and update products, lots, events, documents, and project assets; cannot manage billing or members |
-| Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                |
-| Public visitor | Unauthenticated | View the marketing landing page and any lot verification page the organization has published              |
+| Role           | Scope           | Capabilities                                                                                                                                                  |
+| -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner          | Organization    | All admin capabilities; manage billing; transfer ownership; delete the organization; privileged review                                                        |
+| Admin          | Organization    | Manage members and roles except ownership; manage products, lots, events, documents, and publish settings; privileged review                                  |
+| Reviewer       | Organization    | Approve, reject, or request changes on pending declarations; cannot submit drafts or manage members                                                           |
+| Operator       | Organization    | Create and update products, lots, events, documents, and project assets; submit declarations and respond to change requests; cannot perform privileged review |
+| Viewer         | Organization    | Read products, lots, events, documents, and member list; cannot mutate operational records                                                                    |
+| Public visitor | Unauthenticated | View the marketing landing page and any lot verification page the organization has published                                                                  |
 
 A user without membership in an organization can sign in and create an organization, or accept an invitation.
 
@@ -64,8 +65,9 @@ Platform super-admin is out of scope for the MVP.
 - **Origin event** — an append-only record on a lot (for example received, processed, transferred, documented).
 - **Document** — a file stored in Supabase Storage and linked to a lot or event.
 - **Verification publication** — optional public token and snapshot metadata for a lot.
-- **Provenance declaration** — a versioned record of how an asset was created, including optional AI-tool metadata. Reviewed versions are immutable.
+- **Provenance declaration** — a versioned record of how an asset was created, including optional AI-tool metadata. Reviewed and rejected versions are immutable.
 - **Disclosure assessment** — a deterministic, versioned recommendation produced from a declaration. It is not a legal or compliance decision.
+- **Evidence event** — an append-only, tamper-evident record of a declaration or review action on an asset. The chain is integrity-verified. It is not a blockchain and is not absolutely tamper-proof.
 
 ## Screens (MVP)
 
@@ -165,15 +167,37 @@ processing_failed --> processing
 
 ```text
 draft --> pending_review
+changes_requested --> pending_review
 pending_review --> draft
+pending_review --> changes_requested
 pending_review --> reviewed
+pending_review --> rejected
 ```
 
-- `draft`: editable working version. Save and resume are allowed.
-- `pending_review`: a current assessment exists. A human reviewer must decide. Editing returns the version to `draft` and invalidates that assessment.
-- `reviewed`: immutable. Further edits create a new version and preserve this one.
+- `draft`: editable working version. Save and resume are allowed. Contributors submit from this state.
+- `pending_review`: awaiting a privileged human decision. Contributor edits return the version to `draft` and invalidate the current assessment.
+- `changes_requested`: a reviewer asked for changes. Contributors may edit and resubmit. History is preserved.
+- `reviewed`: approved and immutable. Further edits create a new version.
+- `rejected`: rejected and immutable. Further edits create a new version.
 
-A declaration lineage has at most one working version (`draft` or `pending_review`) at a time.
+Working versions are `draft`, `pending_review`, and `changes_requested`. A lineage has at most one working version at a time.
+
+Privileged review actions (owner, admin, or reviewer only):
+
+| From           | Action          | To                | Notes    |
+| -------------- | --------------- | ----------------- | -------- |
+| pending_review | approve         | reviewed          | Optional |
+| pending_review | reject          | rejected          | Required |
+| pending_review | request_changes | changes_requested | Required |
+
+Contributor actions (owner, admin, or operator):
+
+| From              | Action  | To             | Notes                                  |
+| ----------------- | ------- | -------------- | -------------------------------------- |
+| draft             | submit  | pending_review | Optional                               |
+| changes_requested | respond | pending_review | Required response explaining the edits |
+
+Contributors cannot approve, reject, or request changes. Reviewers cannot submit or edit drafts unless they also hold a mutating role. Invalid, repeated, stale, or unauthorized transitions are rejected.
 
 ### Disclosure assessment
 
@@ -235,7 +259,7 @@ Objects stay in a private Storage bucket. Preview uses a short-lived signed URL 
 
 ## Provenance declarations (MVP)
 
-Owner, admin, and operator members may create and edit draft declarations for a ready asset in their organization. Viewers may read declarations and cannot mutate them. Owner and admin members may record the human review decision. Operators cannot.
+Owner, admin, and operator members may create and edit draft declarations for a ready asset in their organization. Viewers may read declarations and cannot mutate them. Owner, admin, and reviewer members may record privileged review decisions. Operators cannot.
 
 The wizard captures, in order: creation mode; provider; model; model version; generation date; source notes; prompt summary; human edits; distribution regions; content category; realistic-depiction status; public-interest information; editorial-review information.
 
@@ -257,6 +281,20 @@ Outputs:
 - A prominent notice that a human reviewer must make the final decision
 
 English is the v1 locale. Template identifiers and interpolation data stay separate from rendered text so later localization can add catalogs without rewriting rule logic. Reason codes are stable machine-readable strings; UI copy must not be used as application control flow.
+
+## Human review (MVP)
+
+Owner, admin, and reviewer members may approve, reject, or request changes on a `pending_review` version. Operators (contributors) may submit drafts and respond to change requests. Contributors must never approve or make another privileged review decision. Viewers may read the review history.
+
+Reject and change-request notes are required. Approve notes are optional. A contributor response to a change request requires a note. Notes are validated with Zod and rendered as plain text.
+
+A change request does not edit a reviewed or rejected version in place. Contributor responses and resubmission keep the complete review history.
+
+## Tamper-evident evidence history (MVP)
+
+Each asset has an append-only evidence chain. Events are integrity-verified, not a blockchain, and not absolutely tamper-proof. Successful verification means the stored rows still match their hashes and links. It does not prove a database administrator never rewrote the entire chain.
+
+Each event stores organization ID, asset ID, event type, event payload, actor, timestamp, previous hash, and event hash. Hashes use `canon-json.v1` and `sha256-hex.v1` as documented in `docs/ARCHITECTURE.md`. Raw prompts, signed URLs, credentials, and secrets must not appear in payloads. Changing canonicalization or hashing requires a versioned migration; existing chains must not be silently rewritten.
 
 ## Success criteria for the MVP
 

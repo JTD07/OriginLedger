@@ -1,7 +1,8 @@
 import type { DeclarationDraft } from "./schema";
 import type { DeclarationRole } from "./workflow";
 
-export type DeclarationVersionStatus = "draft" | "pending_review" | "reviewed";
+export type DeclarationVersionStatus =
+  "draft" | "pending_review" | "changes_requested" | "reviewed" | "rejected";
 export type AssessmentStatus = "current" | "superseded" | "invalidated";
 export type AssetStatus =
   "pending_upload" | "uploaded" | "processing" | "ready" | "processing_failed";
@@ -45,7 +46,7 @@ export type DeclarationWorkspace = {
   reviews: Array<{
     id: string;
     declarationVersionId: string;
-    decision: "accepted" | "returned";
+    decision: "accepted" | "returned" | "rejected";
     notes: string | null;
     createdAt: string;
   }>;

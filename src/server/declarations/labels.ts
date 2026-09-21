@@ -76,7 +76,9 @@ export const EDITORIAL_REVIEW_LABELS: Record<
 export const VERSION_STATUS_LABELS = {
   draft: "Draft declaration",
   pending_review: "Pending human review",
+  changes_requested: "Changes requested",
   reviewed: "Reviewed declaration",
+  rejected: "Rejected declaration",
 } as const;
 
 export const ASSESSMENT_STATUS_LABELS = {

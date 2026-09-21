@@ -11,7 +11,10 @@ import {
   startDeclarationEdit,
   submitDeclaration,
 } from "./service";
-import { REVIEW_DECISIONS } from "./workflow";
+import {
+  PRIVILEGED_REVIEW_ACTIONS,
+  reviewNotesSchema,
+} from "@/server/review/transitions";
 
 export type DeclarationActionResult =
   | { ok: true }
@@ -23,6 +26,7 @@ function revalidateDeclaration(assetId: string) {
   revalidatePath("/app");
   revalidatePath(`/app/assets/${assetId}`);
   revalidatePath(`/app/assets/${assetId}/declaration`);
+  revalidatePath(`/app/assets/${assetId}/history`);
 }
 
 function messageFor(
@@ -38,7 +42,7 @@ function messageFor(
     case "not_ready":
       return "Declarations can only be created for a ready file.";
     case "forbidden_review":
-      return "Only an owner or admin can record the human review decision.";
+      return "Only an owner, admin, or reviewer can record that decision.";
     case "conflict":
       return "That declaration was updated. Reload and try again.";
     case "unauthorized":
@@ -118,11 +122,22 @@ export async function startDeclarationEditAction(
   return { ok: true };
 }
 
-const reviewSchema = z.object({
-  assetId: z.uuid(),
-  decision: z.enum(REVIEW_DECISIONS),
-  notes: z.string().trim().max(2000),
-});
+const reviewSchema = z
+  .object({
+    assetId: z.uuid(),
+    action: z.enum(PRIVILEGED_REVIEW_ACTIONS),
+    notes: z.string().trim().max(2000),
+  })
+  .superRefine((value, ctx) => {
+    const notes = reviewNotesSchema(value.action).safeParse(value.notes);
+    if (!notes.success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["notes"],
+        message: "Explain the decision.",
+      });
+    }
+  });
 
 export async function recordDeclarationReviewAction(
   input: unknown,
@@ -137,7 +152,7 @@ export async function recordDeclarationReviewAction(
     supabase,
     user.id,
     parsed.data.assetId,
-    parsed.data.decision,
+    parsed.data.action,
     parsed.data.notes,
   );
   if (!result.ok) {

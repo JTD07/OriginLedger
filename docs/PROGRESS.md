@@ -16,8 +16,8 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Private Storage, signed uploads, trusted processing, previews, and tenant isolation.
 - [x] **Milestone 5 — Provenance declarations and disclosure rules engine**
       Versioned declarations, deterministic recommendations, human review. Not invitations.
-- [ ] **Milestone 6 — Products, lots, and origin events**
-      Append-oriented timeline. Tenancy tests.
+- [x] **Milestone 6 — Human review and tamper-evident evidence history**
+      Privileged review decisions, change-request responses, and an integrity-verified append-only chain. Not products or lots.
 - [ ] **Milestone 7 — Documents**
       Attach verified assets to lots/events; supersede without deleting history.
 - [ ] **Milestone 8 — Public verification**
@@ -290,4 +290,49 @@ Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in t
 - The local organization-insert `42501` fallback from Milestone 4 is unchanged.
 - Localization catalogs beyond English `en` are structured but not implemented.
 
-**Next step:** Milestone 6 — Products, lots, and origin events. Do not start it until requested.
+**Next step:** Milestone 6 — Human review and tamper-evident evidence history. Completed 2026-09-20.
+
+### Milestone 6
+
+**Date:** 2026-09-20
+
+**Intent:** Human review workflow and tamper-evident evidence history only. Relabel the stale “Products, lots, and origin events” milestone. Do not implement products, lots, or start Milestone 7 documents.
+
+**Decisions:**
+
+- Working versions are `draft`, `pending_review`, and `changes_requested`. `reviewed` and `rejected` are immutable and edits fork a new version.
+- Privileged actions (approve, reject, request changes) are owner, admin, or reviewer. Contributors (owner, admin, operator) submit and respond. Operators cannot approve. Reviewers cannot submit.
+- `public.apply_declaration_transition` is the application path. Domain status changes also append evidence through `private.append_evidence_event` under a per-asset advisory lock. Authenticated clients have SELECT only on `evidence_events`.
+- Canonicalization is `canon-json.v1` (UTF-16/C-collation key sort for ASCII keys, arrays preserve order, omitted ≠ null, safe integers, UTC millisecond timestamps). Hashing is SHA-256 lowercase hex (`sha256-hex.v1`). Genesis `previous_hash` is 64 zeros. Contract changes require a new version, not a silent rewrite.
+- The timeline is integrity-verified, not a blockchain, and not absolutely tamper-proof. Successful verification does not prove a database administrator never rewrote the chain.
+
+**Commands and results:**
+
+| Command               | Result                                                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`         | Passed.                                                                                                                                            |
+| `pnpm supabase:start` | Passed. Local stack started from backup; hosted/production projects were not touched.                                                              |
+| `pnpm supabase:reset` | Passed. Applied prior migrations plus `20260920221750_review_evidence_history.sql` and `20260920221751_review_evidence_enforcement.sql`.           |
+| `pnpm supabase:test`  | Passed. 9 files, 165 tests (previous 118 plus review transitions, append-only, tenant isolation, grants, and true concurrent dblink writers).      |
+| `pnpm supabase:types` | Passed. Regenerated `src/types/database.ts`; Prettier applied.                                                                                     |
+| `pnpm check`          | Passed. Format, lint, typecheck, and Vitest (21 files, 104 tests).                                                                                 |
+| `pnpm build`          | Passed. Routes include `/app/assets/[assetId]/history`.                                                                                            |
+| `pnpm test:e2e`       | Passed. 16 Chromium tests, including approve, request-changes/respond, integrity-verified timeline, and existing declaration/upload/auth coverage. |
+
+Git tracking: `.env.example` is tracked. `.env.local` is ignored and is not in the index. Raw prompts, signed URLs, and service-role values were not committed.
+
+**Security notes:**
+
+- Review and evidence writes are organization-scoped in application code, the RPC, and RLS. Hidden UI is not authorization.
+- Authenticated clients cannot insert, update, or delete `evidence_events`. Update/delete triggers still fire if RLS is bypassed.
+- Unique `(asset_id, sequence)` and `(asset_id, previous_hash)` prevent competing chain heads. Per-asset `pg_advisory_xact_lock(hashtextextended(asset_id, 0))` serializes appends.
+- Event payloads store action, statuses, version number, and notes only. Raw prompts are stripped.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to production from this milestone.
+- Integrity verification checks stored hashes and links. It does not prove an administrator never replaced the entire chain.
+- Changing `canon-json.v1` / `sha256-hex.v1` requires an explicit versioned migration.
+- Products and lots remain unimplemented on purpose. They are not part of this milestone.
+
+**Next step:** Milestone 7 — Documents. Do not start it until requested.

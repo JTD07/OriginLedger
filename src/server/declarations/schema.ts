@@ -117,6 +117,10 @@ export const declarationDraftSchema = z.object({
 
 export type DeclarationDraft = z.infer<typeof declarationDraftSchema>;
 
+export const declarationSubmitSchema = declarationDraftSchema.extend({
+  responseNotes: z.string().trim().max(2000).optional().default(""),
+});
+
 export const emptyDraft = (): DeclarationDraft => ({
   provider: "",
   model: "",
