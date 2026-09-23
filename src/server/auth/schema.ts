@@ -29,6 +29,9 @@ export type AuthFieldErrors = {
 export type AuthFormState = {
   message?: string;
   fieldErrors?: AuthFieldErrors;
+  values?: {
+    email?: string;
+  };
 } | null;
 
 export function firstIssue(

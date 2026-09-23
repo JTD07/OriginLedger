@@ -54,7 +54,7 @@ pnpm supabase:stop
 
 `pnpm supabase:start` prints `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the service-role key. Put those values in `.env.local`. Keep the service-role key server-only. Local Auth email confirmations are disabled so sign-up can create a session immediately; password-reset mail is still captured by Inbucket.
 
-After sign-in, `/app` can create an organization and project, then upload a PDF, JPEG, PNG, or WebP (25 MB maximum) to private storage. Owner, admin, and operator members can generate PDF or JSON evidence packets from a declaration snapshot and create revocable share links. Public share pages live at `/share/[token]`, outside `/app`, and stream packets from the private `evidence-packets` bucket. Owner and admin members can open `/app/billing` to start Stripe Checkout or the Customer Portal. Organization owners can open `/app/data-handling` to export or delete the tenant. Public draft pages live at `/security`, `/privacy`, and `/terms`. Fixture notes are in `docs/TESTING_ASSETS.md`. Stripe CLI notes are in `docs/STRIPE_TEST_MODE.md`.
+After sign-in, `/app` can create an organization and project, then upload a PDF, JPEG, PNG, or WebP (25 MB maximum) to private storage. Owner, admin, and operator members can generate PDF or JSON evidence packets from a declaration snapshot and create revocable share links. Public share pages live at `/share/[token]`, outside `/app`, and stream packets from the private `evidence-packets` bucket. Owner and admin members can open `/app/billing` to start Stripe Checkout or the Customer Portal. Organization owners can open `/app/data-handling` to export or delete the tenant. Public draft pages live at `/security`, `/privacy`, and `/terms`. A workspace button can create one labeled synthetic sample project; sample files count toward the monthly file limit. Fixture notes are in `docs/TESTING_ASSETS.md`. Stripe CLI notes are in `docs/STRIPE_TEST_MODE.md`. Accessibility and Lighthouse notes are in `docs/QA.md`.
 
 Sign-in lives at `/sign-in`, sign-up at `/sign-up`, recovery at `/recover`, and the signed-in shell at `/app`. Email confirmation and recovery links use `/auth/confirm`.
 
@@ -79,6 +79,8 @@ pnpm format:check
 pnpm test
 pnpm test:watch
 pnpm test:e2e
+pnpm test:a11y
+pnpm lighthouse:public
 pnpm check
 pnpm supabase:start
 pnpm supabase:stop
@@ -103,6 +105,8 @@ pnpm supabase:test
 pnpm check
 pnpm build
 pnpm test:e2e
+pnpm test:a11y
+pnpm lighthouse:public
 ```
 
-Canonical product, architecture, and milestone status live in `docs/`.
+Canonical product, architecture, and milestone status live in `docs/`. Accessibility and Lighthouse evidence is in `docs/QA.md`.

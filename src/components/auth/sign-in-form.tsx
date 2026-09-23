@@ -25,6 +25,7 @@ export function SignInForm({
         type="email"
         autoComplete="email"
         error={state?.fieldErrors?.email}
+        defaultValue={state?.values?.email}
       />
       <Field
         id="password"
@@ -34,7 +35,10 @@ export function SignInForm({
         autoComplete="current-password"
         error={state?.fieldErrors?.password}
       />
-      <FormMessage message={state?.message ?? errorMessage} />
+      <FormMessage
+        message={state?.message ?? errorMessage}
+        tone={state?.message || errorMessage ? "alert" : "status"}
+      />
       <SubmitButton>Sign in</SubmitButton>
       <p className="text-sm text-zinc-600">
         <Link className="underline" href="/recover">

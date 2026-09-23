@@ -58,7 +58,7 @@ Platform super-admin is out of scope for the MVP.
 - **Organization** — tenant. Has a name, billing customer, and memberships.
 - **Membership** — user + organization + role + status.
 - **Invitation** — email invite to join an organization with a proposed role.
-- **Project** — an organization-owned documentation workspace. Members upload origin-record files to a project they are authorized for.
+- **Project** — an organization-owned documentation workspace. Members upload origin-record files to a project they are authorized for. At most one project per organization may be marked `is_sample`.
 - **Asset** — a private file stored for a project after server-side verification. The browser filename, extension, and MIME type are untrusted.
 - **Product** — a named good the organization tracks (SKU or equivalent).
 - **Lot** — a specific batch of a product.
@@ -86,7 +86,7 @@ Public:
 Authenticated:
 
 4. Organization create / choose organization
-5. Home dashboard (counts and recent lots; no mock metrics)
+5. Home dashboard (projects, first-value checklist, optional synthetic sample)
 6. Projects list and project detail
 7. Secure asset upload and asset detail
 8. Provenance declaration wizard and review
@@ -264,13 +264,13 @@ Plans (server-owned, not client-supplied):
 | Agency        | 15           | 250           |
 | Agency Plus   | 50           | 1000          |
 
-A **member seat** is an `active` or `invited` membership, plus a `pending` invitation. A **monthly file** is an organization asset whose `created_at` is in the current Stripe billing period (or the UTC month if no period is stored), excluding `processing_failed`. Failed operations do not consume quota after they are marked failed. Existing rows above a lower limit stay readable; only new seats and new uploads are blocked.
+A **member seat** is an `active` or `invited` membership, plus a `pending` invitation. A **monthly file** is an organization asset whose `created_at` is in the current Stripe billing period (or the UTC month if no period is stored), excluding `processing_failed`. **Synthetic sample files count toward this limit.** Failed operations do not consume quota after they are marked failed. Existing rows above a lower limit stay readable; only new seats and new uploads are blocked.
 
 Owner and admin members may start Checkout or the Billing Portal. Stripe customer IDs, price IDs, plan limits, and subscription status are never accepted from the browser.
 
 ## Data integrity rules
 
-- No production path may use mock, fixture, or placeholder business data.
+- No production path may use mock, fixture, or placeholder business data, except an explicit user-requested **synthetic sample project**. That sample is labeled, private to the current organization, uses the real upload/declaration/review/export path, and is removable. It is not created automatically.
 - All writes are organization-scoped.
 - Origin events are append-oriented. Corrections are new events.
 - Public verification pages show only fields and documents the organization marked as publishable.
@@ -365,6 +365,16 @@ Organization deletion is owner-only after typing the organization name, `DELETE`
 By default OriginLedger does not keep a permanent external audit record after deletion. If `ORGANIZATION_DELETION_RETENTION_DAYS` is set, a minimal completion timestamp may be kept for that many days with no organization name, member list, filenames, prompts, or hashes. That setting is pending counsel review and is not a legal requirement. Deletion is a job and is not instant.
 
 Public `/privacy` and `/terms` pages are draft placeholders that require qualified counsel review before production launch. They must not invent company addresses, legal entities, governing law, certifications, or user rights. They must not claim GDPR, CCPA, HIPAA, SOC 2, or ISO 27001 compliance.
+
+## Accessibility and first-value path (MVP)
+
+Every shipped MVP screen uses semantic landmarks, one primary heading, a skip link, visible focus, and keyboard-operable controls. Dialogs use the native `dialog` element. Status is never color-only. `prefers-reduced-motion` disables nonessential animation. Authenticated HTML is `Cache-Control: private, no-store`. Private object paths and long-lived signed URLs must not appear in page source.
+
+A fresh organization can complete a first-value path without bypassing review: create or select a project, upload a file, complete a declaration, record human review, and generate an evidence packet. A dismissible checklist on the workspace reflects real records.
+
+## Synthetic sample project (MVP)
+
+Creating a sample is an explicit button, never automatic. The project name is `Sample project (synthetic)`. The file is a programmatically generated PNG named `sample-origin-record.png`. The draft declaration is honest (`human_created`) and states that the material is synthetic. Sample creation uses the real signed upload, processing, draft, review, and export services. It does not send email, create Stripe charges, or publish share links. Sample files count toward the monthly file limit. Only `service_role` can insert `is_sample` or execute `purge_sample_project`. Removal deletes sample storage and sample rows, including sample evidence history, and is idempotent. Unrelated projects are not deleted.
 
 ## Success criteria for the MVP
 

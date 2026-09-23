@@ -835,6 +835,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           id: string;
+          is_sample: boolean;
           name: string;
           organization_id: string;
           updated_at: string;
@@ -843,6 +844,7 @@ export type Database = {
           created_at?: string;
           created_by: string;
           id?: string;
+          is_sample?: boolean;
           name: string;
           organization_id: string;
           updated_at?: string;
@@ -851,6 +853,7 @@ export type Database = {
           created_at?: string;
           created_by?: string;
           id?: string;
+          is_sample?: boolean;
           name?: string;
           organization_id?: string;
           updated_at?: string;
@@ -1388,6 +1391,10 @@ export type Database = {
       dblink_is_busy: { Args: { "": string }; Returns: number };
       purge_organization_rows: {
         Args: { p_organization_id: string };
+        Returns: undefined;
+      };
+      purge_sample_project: {
+        Args: { p_organization_id: string; p_project_id: string };
         Returns: undefined;
       };
       set_checkout_pending: {

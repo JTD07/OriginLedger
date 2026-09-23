@@ -1,15 +1,11 @@
-import Link from "next/link";
-import { SiteFooter } from "@/components/legal/site-footer";
+import { PageHeading, PublicMain } from "@/components/a11y/page-shell";
+
+export const metadata = { title: "Security" };
 
 export default function SecurityPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
-      <p>
-        <Link className="underline" href="/">
-          Home
-        </Link>
-      </p>
-      <h1 className="text-3xl font-semibold tracking-tight">Security</h1>
+    <PublicMain>
+      <PageHeading>Security</PageHeading>
       <p>
         OriginLedger supports documentation and transparency workflows. It does
         not certify legal or regulatory compliance. It is not absolutely secure
@@ -44,7 +40,6 @@ export default function SecurityPage() {
           </li>
         </ul>
       </section>
-      <SiteFooter />
-    </main>
+    </PublicMain>
   );
 }

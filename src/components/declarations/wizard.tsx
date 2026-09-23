@@ -257,6 +257,10 @@ export function DeclarationWizard({
         <a className="underline" href={`/app/assets/${assetId}/history`}>
           Integrity-verified history
         </a>
+        {" · "}
+        <a className="underline" href={`/app/assets/${assetId}/exports`}>
+          Evidence packets
+        </a>
       </p>
 
       {workspace.reviews.length > 0 ? (
@@ -285,7 +289,7 @@ export function DeclarationWizard({
       workspace.canMutate ? (
         <button
           type="button"
-          className="w-fit rounded-md border border-zinc-300 px-4 py-2"
+          className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2"
           disabled={pending}
           onClick={() => void startEdit()}
         >
@@ -650,7 +654,7 @@ export function DeclarationWizard({
             {stepIndex > 0 ? (
               <button
                 type="button"
-                className="rounded-md border border-zinc-300 px-4 py-2"
+                className="min-h-11 rounded-md border border-zinc-300 px-4 py-2"
                 onClick={goBack}
               >
                 Back
@@ -667,7 +671,7 @@ export function DeclarationWizard({
             {step.id === "review" ? (
               <button
                 type="submit"
-                className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+                className="min-h-11 rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
                 disabled={pending}
               >
                 {status === "changes_requested"
@@ -677,7 +681,7 @@ export function DeclarationWizard({
             ) : (
               <button
                 type="submit"
-                className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+                className="min-h-11 rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
                 disabled={pending}
               >
                 Continue
@@ -771,15 +775,17 @@ function HumanReviewForm({
           Reject this version
         </label>
       </fieldset>
-      <label className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1" htmlFor="review-notes">
         <span>
           Review notes
           {action === "approve" ? " (optional)" : " (required)"}
         </span>
         <textarea
-          className="rounded-md border border-zinc-300 px-3 py-2"
+          id="review-notes"
+          className="min-h-24 rounded-md border border-zinc-300 px-3 py-2"
           value={notes}
           required={action !== "approve"}
+          aria-required={action !== "approve"}
           onChange={(event) => setNotes(event.target.value)}
         />
       </label>
@@ -790,7 +796,7 @@ function HumanReviewForm({
       ) : null}
       <button
         type="submit"
-        className="w-fit rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+        className="min-h-11 w-fit rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
         disabled={pending || busy}
       >
         Record human review
@@ -801,7 +807,7 @@ function HumanReviewForm({
 
 function DeclarationSummary({ values }: { values: DeclarationDraft }) {
   return (
-    <dl className="grid grid-cols-[12rem_1fr] gap-2 text-sm">
+    <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-[12rem_1fr]">
       <dt>Creation mode</dt>
       <dd>
         {values.creationMode
@@ -879,6 +885,11 @@ function Field({
   type?: string;
   multiline?: boolean;
 }) {
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
@@ -887,30 +898,30 @@ function Field({
       {multiline ? (
         <textarea
           id={id}
-          className="rounded-md border border-zinc-300 px-3 py-2"
+          className="min-h-24 rounded-md border border-zinc-300 px-3 py-2"
           value={value}
           aria-invalid={error ? true : undefined}
-          aria-describedby={hint ? `${id}-hint` : undefined}
+          aria-describedby={describedBy || undefined}
           onChange={(event) => onChange(event.target.value)}
         />
       ) : (
         <input
           id={id}
           type={type}
-          className="rounded-md border border-zinc-300 px-3 py-2"
+          className="min-h-11 rounded-md border border-zinc-300 px-3 py-2"
           value={value}
           aria-invalid={error ? true : undefined}
-          aria-describedby={hint ? `${id}-hint` : undefined}
+          aria-describedby={describedBy || undefined}
           onChange={(event) => onChange(event.target.value)}
         />
       )}
       {hint ? (
-        <p id={`${id}-hint`} className="text-sm text-zinc-600">
+        <p id={hintId} className="text-sm text-zinc-700">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p id={errorId} className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}

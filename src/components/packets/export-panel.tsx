@@ -54,11 +54,12 @@ export function ExportPanel({
       {canMutate ? (
         <form action={onGenerate} className="flex flex-col gap-3">
           <input type="hidden" name="assetId" value={assetId} />
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1" htmlFor="export-format">
             Format
             <select
+              id="export-format"
               name="format"
-              className="rounded-md border border-zinc-300 px-3 py-2"
+              className="min-h-11 rounded-md border border-zinc-300 px-3 py-2"
               defaultValue="json"
             >
               <option value="json">JSON</option>
@@ -78,7 +79,7 @@ export function ExportPanel({
           </label>
           <button
             type="submit"
-            className="w-fit rounded-md border border-zinc-300 px-4 py-2"
+            className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2"
           >
             Generate evidence packet
           </button>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { StatusBadge } from "@/components/a11y/status";
 import {
   BillingPortalForm,
   CheckoutPlanForm,
@@ -10,6 +12,8 @@ import { requireUser } from "@/server/auth/session";
 import { getOrganizationEntitlements } from "@/server/billing/service";
 import { conditionLabel } from "@/server/billing/labels";
 import { displayNameForPlan } from "@/server/billing/plans";
+
+export const metadata = { title: "Billing" };
 
 function formatTimestamp(value: string | null): string | null {
   if (!value) {
@@ -56,14 +60,14 @@ export default async function BillingPage({
   const cancelled = checkoutState === "cancelled";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href="/app">
+        <Link className="min-h-11 underline" href="/app">
           Back to workspace
         </Link>
       </p>
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Billing</h1>
+        <PageHeading>Billing</PageHeading>
         <p className="text-zinc-700">
           {organization.name}. OriginLedger supports documentation and
           transparency workflows. It does not certify legal or regulatory
@@ -72,21 +76,15 @@ export default async function BillingPage({
       </header>
 
       {processing ? (
-        <p
-          role="status"
-          className="rounded-md border border-zinc-400 bg-zinc-50 px-3 py-2"
-        >
+        <StatusBadge tone="busy">
           Billing update processing. Access stays on the last trusted plan until
           Stripe confirms the subscription.
-        </p>
+        </StatusBadge>
       ) : null}
       {cancelled ? (
-        <p
-          role="status"
-          className="rounded-md border border-zinc-400 bg-zinc-50 px-3 py-2"
-        >
+        <StatusBadge tone="neutral">
           Checkout was cancelled. The previous trusted plan is unchanged.
-        </p>
+        </StatusBadge>
       ) : null}
       {entitlements.condition === "past_due_grace" ||
       entitlements.condition === "past_due" ? (
@@ -155,10 +153,11 @@ export default async function BillingPage({
           Files this period: {entitlements.usage.monthlyAssetCount} of{" "}
           {entitlements.limits.monthlyAssetLimit}
         </p>
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-zinc-700">
           Seats include active and invited memberships plus pending invitations.
-          Monthly files exclude processing failures. Existing records above a
-          lower limit stay readable.
+          Monthly files exclude processing failures. Synthetic sample files
+          count toward the monthly file limit. Existing records above a lower
+          limit stay readable.
         </p>
       </section>
 
@@ -179,6 +178,6 @@ export default async function BillingPage({
       ) : (
         <p>Ask an owner or admin to change the plan or payment method.</p>
       )}
-    </main>
+    </>
   );
 }

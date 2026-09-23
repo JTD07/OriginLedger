@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectStatus } from "./helpers/status";
 
 const PNG = Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a4944415478da63000000020001005e0dc8d20000000049454e44ae426082",
@@ -27,7 +28,7 @@ async function createOrgAndProject(
   });
   await page.getByLabel("Project name").fill(projectName);
   await page.getByRole("button", { name: "Create project" }).click();
-  await page.getByRole("link", { name: projectName }).click();
+  await page.getByRole("link", { name: projectName, exact: true }).click();
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
 }
 
@@ -46,7 +47,7 @@ test.describe("asset upload", () => {
     await expect(page.getByRole("heading", { name: "lot.png" })).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText("Status: ready")).toBeVisible();
+    await expectStatus(page, "ready");
     await expect(page.getByText("image/png")).toBeVisible();
   });
 
@@ -98,16 +99,12 @@ test.describe("asset upload", () => {
       buffer: Buffer.from("<html><script>alert(1)</script></html>", "utf8"),
     });
     await page.getByRole("button", { name: "Upload file" }).click();
-    await expect(page.getByText("Status: processing failed")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expectStatus(page, "processing failed");
     await expect(
       page.getByText("That file type is not allowed."),
     ).toBeVisible();
     await page.getByRole("button", { name: "Retry processing" }).click();
-    await expect(page.getByText("Status: processing failed")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expectStatus(page, "processing failed", 15_000);
   });
 
   test("warns about duplicate hashes in the same organization", async ({
@@ -123,9 +120,7 @@ test.describe("asset upload", () => {
       buffer: PNG,
     });
     await page.getByRole("button", { name: "Upload file" }).click();
-    await expect(page.getByText("Status: ready")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expectStatus(page, "ready");
     await page.getByRole("link", { name: "Back to project" }).click();
     await page.locator('input[name="file"]').setInputFiles({
       name: "lot-copy.png",
@@ -136,7 +131,7 @@ test.describe("asset upload", () => {
     await expect(
       page.getByRole("heading", { name: "lot-copy.png" }),
     ).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Status: ready")).toBeVisible();
+    await expectStatus(page, "ready");
     await expect(
       page.getByText("This organization already has 1 other ready file"),
     ).toBeVisible();
@@ -154,9 +149,7 @@ test.describe("asset upload", () => {
       buffer: PNG,
     });
     await page.getByRole("button", { name: "Upload file" }).click();
-    await expect(page.getByText("Status: ready")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expectStatus(page, "ready");
 
     const outsiderContext = await browser.newContext();
     const outsider = await outsiderContext.newPage();
@@ -168,9 +161,7 @@ test.describe("asset upload", () => {
       buffer: PNG,
     });
     await outsider.getByRole("button", { name: "Upload file" }).click();
-    await expect(outsider.getByText("Status: ready")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expectStatus(outsider, "ready");
     await expect(
       outsider.getByText("This organization already has"),
     ).toHaveCount(0);
@@ -201,9 +192,7 @@ test.describe("asset upload", () => {
       buffer: PNG,
     });
     await page.getByRole("button", { name: "Upload file" }).click();
-    await expect(page.getByText("Status: ready")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expectStatus(page, "ready");
     const assetUrl = page.url();
     const projectUrl = new URL(
       (await page
@@ -218,11 +207,11 @@ test.describe("asset upload", () => {
     await signUp(outsider, `tenant-b-${Date.now()}@example.com`);
     await outsider.goto(projectUrl);
     await expect(
-      outsider.getByRole("heading", { name: "This page could not be found." }),
+      outsider.getByRole("heading", { name: "Page not found" }),
     ).toBeVisible();
     await outsider.goto(assetUrl);
     await expect(
-      outsider.getByRole("heading", { name: "This page could not be found." }),
+      outsider.getByRole("heading", { name: "Page not found" }),
     ).toBeVisible();
     const preview = await outsider.request.get(previewUrl);
     expect(preview.status()).toBe(404);

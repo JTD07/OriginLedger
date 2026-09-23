@@ -75,6 +75,11 @@ function failed(state: NonNullable<AuthFormState>): AuthActionFailure {
   return { ok: false, state };
 }
 
+function submittedEmail(formData: FormData): string {
+  const value = formData.get("email");
+  return typeof value === "string" ? value : "";
+}
+
 export function claimsToUser(
   claims: AuthSessionClaims | null,
 ): AuthUser | null {
@@ -99,12 +104,18 @@ export async function signInWithCredentials(
   });
 
   if (!parsed.success) {
-    return failed({ fieldErrors: fieldErrorsFromZod(parsed.error) });
+    return failed({
+      fieldErrors: fieldErrorsFromZod(parsed.error),
+      values: { email: submittedEmail(formData) },
+    });
   }
 
   const { error } = await gateway.signInWithPassword(parsed.data);
   if (error) {
-    return failed({ message: mapAuthError(error) });
+    return failed({
+      message: mapAuthError(error),
+      values: { email: parsed.data.email },
+    });
   }
 
   return { ok: true, redirectTo: safeInternalPath(nextPath) };
@@ -121,7 +132,10 @@ export async function signUpWithCredentials(
   });
 
   if (!parsed.success) {
-    return failed({ fieldErrors: fieldErrorsFromZod(parsed.error) });
+    return failed({
+      fieldErrors: fieldErrorsFromZod(parsed.error),
+      values: { email: submittedEmail(formData) },
+    });
   }
 
   const { data, error } = await gateway.signUp({
@@ -130,7 +144,10 @@ export async function signUpWithCredentials(
   });
 
   if (error) {
-    return failed({ message: mapAuthError(error) });
+    return failed({
+      message: mapAuthError(error),
+      values: { email: parsed.data.email },
+    });
   }
 
   if (!data.sessionPresent) {
@@ -153,7 +170,10 @@ export async function requestPasswordReset(
   });
 
   if (!parsed.success) {
-    return failed({ fieldErrors: fieldErrorsFromZod(parsed.error) });
+    return failed({
+      fieldErrors: fieldErrorsFromZod(parsed.error),
+      values: { email: submittedEmail(formData) },
+    });
   }
 
   const { error } = await gateway.resetPasswordForEmail({
@@ -162,7 +182,10 @@ export async function requestPasswordReset(
   });
 
   if (error) {
-    return failed({ message: mapAuthError(error) });
+    return failed({
+      message: mapAuthError(error),
+      values: { email: parsed.data.email },
+    });
   }
 
   return {

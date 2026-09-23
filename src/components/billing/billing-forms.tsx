@@ -54,7 +54,7 @@ export function CheckoutPlanForm({
       ) : null}
       <button
         type="submit"
-        className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white"
+        className="min-h-11 rounded-md bg-zinc-900 px-4 py-2 font-medium text-white"
       >
         Continue to Stripe Checkout
       </button>
@@ -87,7 +87,7 @@ export function BillingPortalForm({
       ) : null}
       <button
         type="submit"
-        className="rounded-md border border-zinc-300 px-4 py-2 font-medium"
+        className="min-h-11 rounded-md border border-zinc-300 px-4 py-2 font-medium"
       >
         Open Stripe billing portal
       </button>

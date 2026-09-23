@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { UpdatePasswordForm } from "@/components/auth/update-password-form";
-import { AuthShell } from "@/components/auth/auth-ui";
+import { AuthMain } from "@/components/a11y/page-shell";
 import { SIGN_IN_PATH } from "@/server/auth/paths";
 import { getCurrentUser } from "@/server/auth/session";
+
+export const metadata = { title: "Choose a new password" };
 
 export default async function UpdatePasswordPage() {
   const user = await getCurrentUser();
@@ -11,8 +13,8 @@ export default async function UpdatePasswordPage() {
   }
 
   return (
-    <AuthShell title="Choose a new password">
+    <AuthMain title="Choose a new password">
       <UpdatePasswordForm />
-    </AuthShell>
+    </AuthMain>
   );
 }

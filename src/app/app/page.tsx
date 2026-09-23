@@ -1,14 +1,23 @@
 import Link from "next/link";
-import { SignOutButton } from "@/components/auth/sign-out-button";
-import { SiteFooter } from "@/components/legal/site-footer";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { EmptyState } from "@/components/a11y/status";
 import {
   CreateOrganizationForm,
   CreateProjectForm,
+  CreateSampleProjectForm,
+  RemoveSampleProjectForm,
 } from "@/components/assets/workspace-forms";
+import { OnboardingChecklist } from "@/components/onboarding/checklist";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { getOrgAccess } from "@/server/tenancy/access";
 import { listProjects } from "@/server/assets/service";
+import { SAMPLE_PROJECT_NAME } from "@/server/samples/constants";
+import { onboardingSteps } from "@/server/samples/progress";
+import {
+  getSampleProject,
+  loadOnboardingProgress,
+} from "@/server/samples/service";
 
 export default async function AppHomePage() {
   const user = await requireUser();
@@ -22,20 +31,26 @@ export default async function AppHomePage() {
   const access = firstOrg
     ? await getOrgAccess(supabase, user.id, firstOrg.id)
     : null;
+  const sample = firstOrg
+    ? await getSampleProject(supabase, firstOrg.id)
+    : null;
+  const progress = firstOrg
+    ? await loadOnboardingProgress(supabase, firstOrg.id)
+    : null;
+  const steps = progress ? onboardingSteps(progress) : [];
+  const completedHref =
+    progress?.hasExport && progress.assetId
+      ? `/app/assets/${progress.assetId}/exports`
+      : null;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Workspace</h1>
-          <p className="text-zinc-700">
-            Signed in{user.email ? ` as ${user.email}` : ""}. OriginLedger
-            supports documentation and transparency workflows. It does not
-            certify legal or regulatory compliance.
-          </p>
-        </div>
-        <SignOutButton />
-      </div>
+    <>
+      <PageHeading>Workspace</PageHeading>
+      <p>
+        Signed in{user.email ? ` as ${user.email}` : ""}. OriginLedger supports
+        documentation and transparency workflows. It does not certify legal or
+        regulatory compliance.
+      </p>
 
       {firstOrg ? (
         <section className="flex flex-col gap-3" aria-labelledby="org-heading">
@@ -47,32 +62,6 @@ export default async function AppHomePage() {
           ) : (
             <p>You can view projects in this organization.</p>
           )}
-          {access?.canBill ? (
-            <p>
-              <Link className="underline" href="/app/billing">
-                Billing
-              </Link>
-            </p>
-          ) : (
-            <p>
-              <Link className="underline" href="/app/billing">
-                View plan usage
-              </Link>
-            </p>
-          )}
-          {access?.canOwn ? (
-            <p>
-              <Link className="underline" href="/app/data-handling">
-                Data handling
-              </Link>
-            </p>
-          ) : (
-            <p>
-              <Link className="underline" href="/app/data-handling">
-                Data handling
-              </Link>
-            </p>
-          )}
         </section>
       ) : (
         <section className="flex flex-col gap-3" aria-labelledby="create-org">
@@ -83,6 +72,44 @@ export default async function AppHomePage() {
         </section>
       )}
 
+      {firstOrg && progress ? (
+        <OnboardingChecklist
+          organizationId={firstOrg.id}
+          steps={steps}
+          completedHref={completedHref}
+        />
+      ) : null}
+
+      {firstOrg && access?.canMutate ? (
+        <section
+          className="flex flex-col gap-3"
+          aria-labelledby="sample-heading"
+        >
+          <h2 id="sample-heading" className="text-xl font-semibold">
+            Synthetic sample
+          </h2>
+          {sample ? (
+            <>
+              <p>
+                This organization has a labeled synthetic sample project. Sample
+                files count toward the monthly file limit.
+              </p>
+              <p>
+                <Link
+                  className="min-h-11 underline"
+                  href={`/app/projects/${sample.projectId}`}
+                >
+                  {SAMPLE_PROJECT_NAME}
+                </Link>
+              </p>
+              <RemoveSampleProjectForm organizationId={firstOrg.id} />
+            </>
+          ) : (
+            <CreateSampleProjectForm organizationId={firstOrg.id} />
+          )}
+        </section>
+      ) : null}
+
       <section
         className="flex flex-col gap-3"
         aria-labelledby="projects-heading"
@@ -91,23 +118,39 @@ export default async function AppHomePage() {
           Projects
         </h2>
         {projects.length === 0 ? (
-          <p>No projects yet.</p>
+          <EmptyState
+            title="No projects yet"
+            action={
+              firstOrg && access?.canMutate ? (
+                <p>
+                  Create a project above, or create the synthetic sample
+                  project.
+                </p>
+              ) : firstOrg ? (
+                <p>Ask an operator or owner to create a project.</p>
+              ) : (
+                <p>Create an organization to add a project.</p>
+              )
+            }
+          >
+            Projects hold origin-record files for this organization.
+          </EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
             {projects.map((project) => (
               <li key={project.id}>
                 <Link
-                  className="underline"
+                  className="min-h-11 underline"
                   href={`/app/projects/${project.id}`}
                 >
                   {project.name}
+                  {project.is_sample ? " (synthetic sample)" : ""}
                 </Link>
               </li>
             ))}
           </ul>
         )}
       </section>
-      <SiteFooter />
-    </main>
+    </>
   );
 }

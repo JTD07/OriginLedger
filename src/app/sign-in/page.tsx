@@ -1,6 +1,8 @@
 import { SignInForm } from "@/components/auth/sign-in-form";
-import { AuthShell } from "@/components/auth/auth-ui";
+import { AuthMain } from "@/components/a11y/page-shell";
 import { APP_HOME_PATH, safeInternalPath } from "@/server/auth/paths";
+
+export const metadata = { title: "Sign in" };
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -22,8 +24,8 @@ export default async function SignInPage({
       : undefined;
 
   return (
-    <AuthShell title="Sign in">
+    <AuthMain title="Sign in">
       <SignInForm nextPath={nextPath} errorMessage={errorMessage} />
-    </AuthShell>
+    </AuthMain>
   );
 }

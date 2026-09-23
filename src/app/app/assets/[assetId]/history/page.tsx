@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { EmptyState, StatusBadge } from "@/components/a11y/status";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { EVIDENCE_EVENT_LABELS } from "@/server/evidence/labels";
@@ -8,6 +10,8 @@ import {
   listEvidencePage,
 } from "@/server/evidence/service";
 import type { ChainVerification } from "@/server/evidence/verify";
+
+export const metadata = { title: "Evidence history" };
 
 function verificationCopy(verification: ChainVerification, total: number) {
   if (total === 0) {
@@ -50,26 +54,28 @@ export default async function EvidenceHistoryPage({
   const pageCount = Math.max(1, Math.ceil(loaded.total / EVIDENCE_PAGE_SIZE));
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href={`/app/assets/${assetId}/declaration`}>
+        <Link
+          className="min-h-11 underline"
+          href={`/app/assets/${assetId}/declaration`}
+        >
           Back to declaration
         </Link>
       </p>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Tamper-evident evidence history
-      </h1>
+      <PageHeading>Tamper-evident evidence history</PageHeading>
       <p>
         OriginLedger supports documentation and transparency workflows. This
         timeline is integrity-verified. It is not a blockchain and is not
         absolutely tamper-proof.
       </p>
-      <p
-        role="status"
-        className={
+      <StatusBadge
+        tone={
           banner.status === "failed"
-            ? "border border-red-300 p-3"
-            : "border border-zinc-200 p-3"
+            ? "danger"
+            : banner.status === "success"
+              ? "success"
+              : "warning"
         }
       >
         {banner.status === "success"
@@ -78,9 +84,11 @@ export default async function EvidenceHistoryPage({
             ? "Integrity verification failed. "
             : "Integrity verification could not be completed. "}
         {banner.text}
-      </p>
+      </StatusBadge>
       {loaded.events.length === 0 ? (
-        <p>No evidence events for this file yet.</p>
+        <EmptyState title="No evidence events for this file yet">
+          Events appear after a declaration is submitted or reviewed.
+        </EmptyState>
       ) : (
         <ol className="flex flex-col gap-4">
           {loaded.events.map((event) => {
@@ -123,10 +131,10 @@ export default async function EvidenceHistoryPage({
         </ol>
       )}
       {pageCount > 1 ? (
-        <nav aria-label="Evidence pages" className="flex gap-3">
+        <nav aria-label="Evidence pages" className="flex flex-wrap gap-3">
           {loaded.page > 1 ? (
             <Link
-              className="underline"
+              className="min-h-11 underline"
               href={`/app/assets/${assetId}/history?page=${loaded.page - 1}`}
             >
               Previous page
@@ -137,7 +145,7 @@ export default async function EvidenceHistoryPage({
           </p>
           {loaded.page < pageCount ? (
             <Link
-              className="underline"
+              className="min-h-11 underline"
               href={`/app/assets/${assetId}/history?page=${loaded.page + 1}`}
             >
               Next page
@@ -145,6 +153,6 @@ export default async function EvidenceHistoryPage({
           ) : null}
         </nav>
       ) : null}
-    </main>
+    </>
   );
 }

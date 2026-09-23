@@ -18,6 +18,7 @@ export function RecoverForm() {
         type="email"
         autoComplete="email"
         error={state?.fieldErrors?.email}
+        defaultValue={state?.values?.email}
       />
       <FormMessage message={state?.message} />
       <SubmitButton>Send reset link</SubmitButton>

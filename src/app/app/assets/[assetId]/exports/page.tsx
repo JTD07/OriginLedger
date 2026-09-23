@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
 import { ExportPanel } from "@/components/packets/export-panel";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { listEvidenceExports } from "@/server/packets/service";
+
+export const metadata = { title: "Evidence packets" };
 
 export default async function AssetExportsPage({
   params,
@@ -27,15 +30,13 @@ export default async function AssetExportsPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href={`/app/assets/${asset.id}`}>
+        <Link className="min-h-11 underline" href={`/app/assets/${asset.id}`}>
           Back to file
         </Link>
       </p>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Evidence packets
-      </h1>
+      <PageHeading>Evidence packets</PageHeading>
       <p>
         OriginLedger supports documentation and transparency workflows.
         Generated packets record supplied information and review history. They
@@ -47,6 +48,6 @@ export default async function AssetExportsPage({
         exports={listed.exports}
         shares={listed.shares}
       />
-    </main>
+    </>
   );
 }

@@ -95,6 +95,7 @@ Supabase Auth issues the session. The Next.js server reads cookies via `@supabas
 - Origin events are insert-mostly. A trigger rejects payload, kind, lot, and organization changes. Corrections set `status = 'superseded'` and `superseded_by`.
 - `service_role` keeps full table grants and bypasses RLS. It is server-only (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_*`).
 - Generated-compatible database types are checked in at `src/types/database.ts`. Regenerate with `pnpm supabase:types` after schema changes.
+- Authenticated HTML under `/app` is served `Cache-Control: private, no-store`. Share pages stay `private, no-store`. Prefetch must not leak private object URLs or tokens across tenants.
 - Private origin-record files live in the `origin-assets` bucket. Generated evidence packets live in the separate private `evidence-packets` bucket under `exports/{uuid}` keys. Organization data exports live in the private `organization-exports` bucket under `org-exports/{uuid}` keys. Clients never receive the service-role key. Uploads use short-lived signed URLs for a server-generated object key. Packet and organization-export downloads stream through authorized server endpoints. Lot-linked `documents` remain a later milestone.
 - Direct `DELETE` of an organization by an authenticated owner is not allowed. Deletion is a service-role job. Authenticated members cannot `SELECT` export or deletion-job tables. Append-only tenant history may be deleted with the tenant after storage verification; optional `organization_deletion_completions` rows contain only timestamps.
 
@@ -359,3 +360,12 @@ Share-page headers: `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control
 - Authenticated clients have no GRANT on export/deletion job tables and cannot DELETE organizations. Service-role purge uses `originledger.purge_organization`.
 - Append-only evidence events are not rewritten. They are deleted with the tenant after storage verification.
 - Default finalize removes job rows. `ORGANIZATION_DELETION_RETENTION_DAYS` may keep a timestamp-only completion row pending counsel review.
+
+### Milestone 10 UX, accessibility, and sample projects
+
+- Skip link, header/nav/main/footer landmarks, and `main#main-content` live in `src/components/a11y/`. Authenticated `/app` routes use `AppHeader` + `AppMain`; public marketing/legal routes use `PublicMain`; share routes use `ShareMain`. Nested `/app/not-found` and `/app/error` omit a second `main` so `notFound()` does not duplicate landmarks.
+- `/app/:path*` and `/share/:path*` send `Cache-Control: private, no-store`. Preview `img` sources are authorized `/app/assets/[id]/preview` routes, never Storage object paths or long-lived signed URLs.
+- Axe scans use `@axe-core/playwright` with tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa`. Violations fail the test. There are no broad rule exclusions. Fixture: `e2e/helpers/a11y.ts`.
+- Lighthouse runs only against genuinely public HTML (`/`, `/security`, `/privacy`, `/terms`, generic not-found, and an unavailable share page). Authenticated tenant pages are not reported as public. Raw reports stay gitignored. Command: `pnpm lighthouse:public`.
+- `projects.is_sample` is insertable only by `service_role` / Postgres and is immutable afterward. `public.purge_sample_project` is `service_role` only and sets `originledger.purge_sample_project` so append-only sample history can be deleted for that project alone.
+- Sample files are ordinary assets and count toward monthly entitlements. Creation uses the real signed-upload and processing path. Removal deletes sample storage first, then sample rows, and is idempotent.

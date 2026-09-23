@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
 export function AuthShell({
   title,
@@ -8,13 +11,12 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-16">
+    <>
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-zinc-500">OriginLedger</p>
         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
       </div>
       {children}
-    </main>
+    </>
   );
 }
 
@@ -25,6 +27,9 @@ export function Field({
   name,
   autoComplete,
   error,
+  defaultValue,
+  required = true,
+  describedBy,
 }: {
   id: string;
   label: string;
@@ -32,22 +37,34 @@ export function Field({
   name: string;
   autoComplete?: string;
   error?: string;
+  defaultValue?: string;
+  required?: boolean;
+  describedBy?: string;
 }) {
+  const errorId = `${id}-error`;
+  const helpIds = [describedBy, error ? errorId : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium text-zinc-800">
         {label}
+        {required ? <span className="font-normal"> (required)</span> : null}
       </label>
       <input
         id={id}
         name={name}
         type={type}
         autoComplete={autoComplete}
-        required
-        className="rounded-md border border-zinc-300 px-3 py-2 text-zinc-900"
+        required={required}
+        aria-required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={helpIds || undefined}
+        defaultValue={defaultValue}
+        className="min-h-11 rounded-md border border-zinc-300 px-3 py-2 text-zinc-900"
       />
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p id={errorId} className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}
@@ -55,25 +72,37 @@ export function Field({
   );
 }
 
-export function FormMessage({ message }: { message?: string }) {
+export function FormMessage({
+  message,
+  tone = "status",
+}: {
+  message?: string;
+  tone?: "status" | "alert";
+}) {
   if (!message) {
     return null;
   }
 
   return (
-    <p className="text-sm text-zinc-800" role="status">
+    <p
+      className="text-sm text-zinc-800"
+      role={tone === "alert" ? "alert" : "status"}
+    >
       {message}
     </p>
   );
 }
 
 export function SubmitButton({ children }: { children: ReactNode }) {
+  const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white"
+      className="min-h-11 rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+      disabled={pending}
+      aria-busy={pending}
     >
-      {children}
+      {pending ? "Working…" : children}
     </button>
   );
 }

@@ -164,10 +164,14 @@ export function AssetUploadForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form
+      onSubmit={onSubmit}
+      className="flex flex-col gap-4"
+      aria-busy={phase !== "idle"}
+    >
       <div className="flex flex-col gap-1">
         <label htmlFor={fieldId} className="text-sm font-medium">
-          File
+          File <span className="font-normal">(required)</span>
         </label>
         <input
           id={fieldId}
@@ -175,40 +179,55 @@ export function AssetUploadForm({
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
           required
+          aria-required="true"
+          aria-invalid={message ? true : undefined}
+          aria-describedby={`${fieldId}-help${message ? ` ${fieldId}-error` : ""}`}
+          className="min-h-11"
         />
-        <p className="text-sm text-zinc-600">
+        <p id={`${fieldId}-help`} className="text-sm text-zinc-700">
           PDF, JPEG, PNG, or WebP. 25 MB maximum. OriginLedger supports
           documentation and transparency workflows.
         </p>
       </div>
       {phase === "uploading" ? (
-        <p role="status" aria-live="polite">
-          Uploading to storage: {progress}%
-        </p>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${fieldId}-progress`}>Upload progress</label>
+          <progress id={`${fieldId}-progress`} max={100} value={progress} />
+          <p>{progress} percent transferred</p>
+        </div>
       ) : null}
       {phase === "processing" ? (
-        <p role="status" aria-live="polite">
+        <p role="status">
           Processing on the server. This is separate from the upload progress.
         </p>
       ) : null}
       {duplicateCount > 0 ? (
-        <p role="status" aria-live="polite">
+        <p role="status">
           This organization already has {duplicateCount} file
           {duplicateCount === 1 ? "" : "s"} with the same contents. The new
           upload was kept.
         </p>
       ) : null}
       {message ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p
+          id={`${fieldId}-error`}
+          role="alert"
+          className="text-sm text-red-800"
+        >
           {message}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={phase !== "idle"}
-        className="rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
+        aria-busy={phase !== "idle"}
+        className="min-h-11 rounded-md bg-zinc-900 px-4 py-2 font-medium text-white disabled:opacity-60"
       >
-        Upload file
+        {phase === "uploading"
+          ? "Uploading…"
+          : phase === "processing"
+            ? "Processing…"
+            : "Upload file"}
       </button>
     </form>
   );

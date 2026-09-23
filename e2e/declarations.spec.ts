@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectStatus } from "./helpers/status";
 
 const PNG = Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a4944415478da63000000020001005e0dc8d20000000049454e44ae426082",
@@ -23,16 +24,16 @@ async function createReadyAsset(page: Page) {
   });
   await page.getByLabel("Project name").fill("Declaration project");
   await page.getByRole("button", { name: "Create project" }).click();
-  await page.getByRole("link", { name: "Declaration project" }).click();
+  await page
+    .getByRole("link", { name: "Declaration project", exact: true })
+    .click();
   await page.locator('input[name="file"]').setInputFiles({
     name: "lot.png",
     mimeType: "image/png",
     buffer: PNG,
   });
   await page.getByRole("button", { name: "Upload file" }).click();
-  await expect(page.getByText("Status: ready")).toBeVisible({
-    timeout: 30_000,
-  });
+  await expectStatus(page, "ready");
 }
 
 async function fillRemainingWizard(page: Page) {
@@ -187,7 +188,7 @@ test.describe("provenance declarations", () => {
     await signUp(outsider, `declare-b-${Date.now()}@example.com`);
     await outsider.goto(declarationUrl);
     await expect(
-      outsider.getByRole("heading", { name: "This page could not be found." }),
+      outsider.getByRole("heading", { name: "Page not found" }),
     ).toBeVisible();
     await outsiderContext.close();
   });

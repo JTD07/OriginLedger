@@ -24,11 +24,13 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Hosted Checkout and Billing Portal, verified webhooks, trusted subscription state, member and monthly-file limits.
 - [x] **Milestone 9 — Production observability and privacy controls**
       Sentry, scrubbing, structured logs, correlation IDs, health checks, organization export, controlled deletion, and draft legal pages.
-- [ ] **Milestone 10 — Resend email**
+- [x] **Milestone 10 — UX and accessibility hardening**
+      Semantic structure, keyboard and focus, forms, reduced motion, responsive states, labeled sample project, first-value path, axe, and Lighthouse on public pages. Not Resend email.
+- [ ] **Milestone 11 — Resend email**
       Invitations and auth-related transactional mail.
-- [ ] **Milestone 11 — Public verification**
+- [ ] **Milestone 12 — Public verification**
       Publish/unpublish lot pages. Unauthenticated access only to published data.
-- [ ] **Milestone 12 — Launch hardening**
+- [ ] **Milestone 13 — Launch hardening**
       Access, rate limits, empty states, threat review. Still no compliance claims.
 
 ## Verification log
@@ -483,4 +485,66 @@ Git tracking: `.env.example` is tracked with placeholders only. `.env.local`, `.
 - `@sentry/cli` is listed in `pnpm-workspace.yaml` `allowBuilds` as false so local/CI installs do not compile the native CLI. Production source-map upload needs a CI job that enables `SENTRY_UPLOAD_SOURCEMAPS` with org, project, and token.
 - Resend email and public lot verification are not implemented.
 
-**Next step:** Milestone 10 — Resend email. Do not start it until requested.
+**Next step:** Milestone 10 — UX and accessibility hardening. The checklist label “Resend email” for Milestone 10 was stale; Resend is Milestone 11. Do not start it until requested.
+
+### Milestone 10
+
+**Date:** 2026-09-21
+
+**Intent:** UX and accessibility hardening only. Relabel the stale Milestone 10 “Resend email” checklist item. Do not begin Milestone 11 (Resend), public lot verification, or launch hardening.
+
+**Decisions:**
+
+- Shared chrome: skip link, `main#main-content`, header/nav/footer landmarks, visible `:focus-visible` outline, `prefers-reduced-motion`, and `Status:` text so status is not color-only. Nested `/app/not-found` avoids a second public `main` inside the authenticated layout.
+- Sample project: explicit **Create synthetic sample project**. `projects.is_sample` inserts require `service_role`. Creation uses real signed upload, processing, and an honest `human_created` draft. Sample files count toward monthly file limits. Removal is storage-first then `purge_sample_project` (GUC allows sample evidence-history delete only). Idempotent. No email, Stripe charge, or share link.
+- First-value checklist is dismissible per organization and derived from real rows. Completion links to the generated packet.
+- Axe: `@axe-core/playwright` tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`. Violations fail. No rule exclusions. Private object paths are asserted absent from scanned HTML.
+- Lighthouse: public HTML only via `pnpm lighthouse:public`. Share pages stay `noindex`. Authenticated `/app` is `Cache-Control: private, no-store`.
+
+**Commands and results:**
+
+| Command                  | Result                                                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`            | Passed.                                                                                                                                                         |
+| `pnpm supabase:start`    | Passed. Local stack started; hosted/production projects were not touched.                                                                                       |
+| `pnpm supabase:reset`    | Passed. Applied prior migrations plus `20260921120000_sample_projects.sql`.                                                                                     |
+| `pnpm supabase:test`     | Passed. 13 files, 280 tests (previous 266 plus sample-project RLS, unique sample, purge, and insert-guard cases).                                               |
+| `pnpm supabase:types`    | Passed after the sample migration (earlier in this milestone). Not re-run after later UI-only changes.                                                          |
+| `pnpm check`             | Passed. Format, lint, typecheck, and Vitest (45 files, 195 tests).                                                                                              |
+| `pnpm build`             | Passed (Playwright webServer production build, Next.js 16.3.5).                                                                                                 |
+| `pnpm test:e2e`          | Passed. 28 Chromium tests, including sample create/remove/isolation, first-value path, axe, skip link, reduced motion, and existing upload/review/packet flows. |
+| `pnpm test:a11y`         | Passed. 5 Chromium tests.                                                                                                                                       |
+| `pnpm lighthouse:public` | Ran against local `pnpm start`. Lighthouse 13.5.0, desktop 1350×940. Scores recorded in `docs/QA.md`.                                                           |
+
+The first `pnpm test:e2e` after the UX pass failed on substring heading matches (`Billing` vs `Manage billing`), sample URL capture before navigation, isolation copy (`Page not found`), Playwright `role=status` accessible-name matching, and 30s test timeouts on real upload/sample flows. Those were locator and timeout issues, not product-rule bypasses.
+
+**Lighthouse (public HTML only, 2026-09-21, `http://127.0.0.1:3000`, production):**
+
+| Route                        | Perf | A11y | Best practices | SEO |
+| ---------------------------- | ---- | ---- | -------------- | --- |
+| `/`                          | 100  | 100  | 96             | 100 |
+| `/security`                  | 100  | 100  | 100            | 100 |
+| `/privacy`                   | 100  | 100  | 100            | 100 |
+| `/terms`                     | 100  | 100  | 100            | 100 |
+| `/this-route-does-not-exist` | —    | —    | —              | —   |
+| `/share/unavailable-token`   | 100  | 100  | 100            | 60  |
+
+Landing best-practices 96 is `errors-in-console`. HTTP 404 is `ERRORED_DOCUMENT_REQUEST` in Lighthouse 13.5.0 (no category scores). Share SEO 60 is intentional `is-crawlable` failure from `X-Robots-Tag: noindex`. Reports containing tokens or Storage paths are refused and gitignored.
+
+**First-value timing:** 1 min 41 sec in Cursor Chromium from Create organization to Download packet, local production + local Supabase, unpaid plan, synthetic sample, no Stripe/email. Playwright first-value test has no wall-clock assertion.
+
+**Security notes:**
+
+- Sample `is_sample` cannot be set by authenticated clients. Purge is `service_role` only.
+- Sample creation still enforces entitlements. There is no monthly-file bypass.
+- Preview URLs are app routes after authorization. Signed upload URLs are not in SSR HTML.
+- Share tokens are not stored in Lighthouse artifacts.
+
+**Unresolved risks:**
+
+- Hosted projects were not migrated. Do not apply these migrations to a production project from this milestone.
+- NVDA/VoiceOver, Windows High Contrast, and 400% zoom were not independently lab-logged.
+- Landing `errors-in-console` was not treated as a WCAG pass. Axe passing is not complete WCAG certification.
+- Resend email and public lot verification are not implemented.
+
+**Next step:** Milestone 11 — Resend email. Do not start it until requested.

@@ -67,7 +67,7 @@ export function OrganizationExportForm({
       </label>
       <button
         type="submit"
-        className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
+        className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
       >
         Request organization export
       </button>
@@ -133,7 +133,7 @@ export function OrganizationDeletionForm({
       </label>
       <button
         type="submit"
-        className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
+        className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
       >
         Request organization deletion
       </button>
@@ -159,7 +159,7 @@ export function DeletionRetryForm({
       <input type="hidden" name="organizationId" value={organizationId} />
       <button
         type="submit"
-        className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
+        className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
       >
         Retry failed deletion
       </button>
@@ -185,7 +185,7 @@ export function DeletionCancelForm({
       <input type="hidden" name="organizationId" value={organizationId} />
       <button
         type="submit"
-        className="w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
+        className="min-h-11 w-fit rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium"
       >
         Cancel deletion
       </button>

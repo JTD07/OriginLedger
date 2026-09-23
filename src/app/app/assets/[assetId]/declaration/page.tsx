@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
 import { DeclarationWizard } from "@/components/declarations/wizard";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { getDeclarationWorkspace } from "@/server/declarations/service";
+
+export const metadata = { title: "Provenance declaration" };
 
 export default async function DeclarationPage({
   params,
@@ -29,20 +32,18 @@ export default async function DeclarationPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href={`/app/assets/${asset.id}`}>
+        <Link className="min-h-11 underline" href={`/app/assets/${asset.id}`}>
           Back to file
         </Link>
       </p>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        Provenance declaration
-      </h1>
+      <PageHeading>Provenance declaration</PageHeading>
       <DeclarationWizard
         assetId={asset.id}
         fileName={asset.client_filename ?? "Asset"}
         workspace={loaded.workspace}
       />
-    </main>
+    </>
   );
 }

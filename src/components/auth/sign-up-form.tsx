@@ -18,6 +18,7 @@ export function SignUpForm() {
         type="email"
         autoComplete="email"
         error={state?.fieldErrors?.email}
+        defaultValue={state?.values?.email}
       />
       <Field
         id="password"

@@ -16,6 +16,8 @@
 /test-results/
 /blob-report/
 /playwright/.cache/
+/lighthouse-reports/
+/.lighthouseci/
 tmp-*.png
 tmp-*.jpg
 tmp-*.jpeg

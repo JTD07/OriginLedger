@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { StatusBadge } from "@/components/a11y/status";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { isInlinePreviewMime } from "@/server/assets/constants";
@@ -31,6 +33,12 @@ export default async function AssetDetailPage({
     notFound();
   }
 
+  const { data: project } = await supabase
+    .from("projects")
+    .select("is_sample")
+    .eq("id", asset.project_id)
+    .maybeSingle();
+
   let duplicateCount = 0;
   if (asset.status === "ready" && asset.sha256) {
     const { count } = await supabase
@@ -48,17 +56,34 @@ export default async function AssetDetailPage({
     asset.verified_mime_type &&
     isInlinePreviewMime(asset.verified_mime_type);
 
+  const statusTone =
+    asset.status === "ready"
+      ? "success"
+      : asset.status === "processing_failed"
+        ? "danger"
+        : asset.status === "processing" || asset.status === "pending_upload"
+          ? "busy"
+          : "neutral";
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href={`/app/projects/${asset.project_id}`}>
+        <Link
+          className="min-h-11 underline"
+          href={`/app/projects/${asset.project_id}`}
+        >
           Back to project
         </Link>
       </p>
-      <h1 className="text-3xl font-semibold tracking-tight">
-        {asset.client_filename ?? "Asset"}
-      </h1>
-      <p role="status">Status: {asset.status.replaceAll("_", " ")}</p>
+      <PageHeading>{asset.client_filename ?? "Asset"}</PageHeading>
+      {project?.is_sample ? (
+        <StatusBadge tone="warning">
+          Synthetic sample file. This is not a real origin record.
+        </StatusBadge>
+      ) : null}
+      <StatusBadge tone={statusTone}>
+        {asset.status.replaceAll("_", " ")}
+      </StatusBadge>
       {asset.status === "processing_failed" ? (
         <p role="alert">
           {FAILURE_COPY[asset.failure_code ?? ""] ??
@@ -73,7 +98,7 @@ export default async function AssetDetailPage({
         </p>
       ) : null}
       {asset.status === "ready" ? (
-        <dl className="grid grid-cols-[8rem_1fr] gap-2 text-sm">
+        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-[8rem_1fr]">
           <dt>Verified type</dt>
           <dd>{asset.verified_mime_type}</dd>
           <dt>Size</dt>
@@ -81,26 +106,25 @@ export default async function AssetDetailPage({
         </dl>
       ) : null}
       {asset.status === "ready" ? (
-        <p>
+        <nav aria-label="Asset actions" className="flex flex-col gap-2">
           <Link
-            className="underline"
+            className="min-h-11 underline"
             href={`/app/assets/${asset.id}/declaration`}
           >
             Provenance declaration
           </Link>
-        </p>
-      ) : null}
-      {asset.status === "ready" ? (
-        <p>
-          <Link className="underline" href={`/app/assets/${asset.id}/exports`}>
+          <Link
+            className="min-h-11 underline"
+            href={`/app/assets/${asset.id}/exports`}
+          >
             Evidence packets
           </Link>
-        </p>
+        </nav>
       ) : null}
       {inline ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          alt="Verified image preview"
+          alt="Verified image preview of the uploaded origin-record file"
           src={`/app/assets/${asset.id}/preview`}
           className="max-w-full border border-zinc-200"
         />
@@ -108,7 +132,10 @@ export default async function AssetDetailPage({
       {asset.status === "ready" && !inline ? (
         <p>
           This format is not rendered inline.{" "}
-          <a className="underline" href={`/app/assets/${asset.id}/preview`}>
+          <a
+            className="min-h-11 underline"
+            href={`/app/assets/${asset.id}/preview`}
+          >
             Download the file
           </a>
         </p>
@@ -123,12 +150,12 @@ export default async function AssetDetailPage({
         >
           <button
             type="submit"
-            className="rounded-md border border-zinc-300 px-4 py-2"
+            className="min-h-11 rounded-md border border-zinc-300 px-4 py-2"
           >
             Retry processing
           </button>
         </form>
       ) : null}
-    </main>
+    </>
   );
 }

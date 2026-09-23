@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { SkipLink } from "@/components/a11y/skip-link";
 
 export default function GlobalError({
   error,
@@ -15,7 +16,12 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body>
-        <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
+        <SkipLink />
+        <main
+          id="main-content"
+          className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16"
+          tabIndex={-1}
+        >
           <h1 className="text-2xl font-semibold tracking-tight">
             Something went wrong
           </h1>

@@ -22,7 +22,9 @@ test.describe("billing", () => {
       timeout: 15_000,
     });
     await page.getByRole("link", { name: "Billing" }).click();
-    await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Billing" }),
+    ).toBeVisible();
     await expect(page.getByText("Unpaid", { exact: true })).toBeVisible();
     await expect(page.getByText("Members: 1 of 2")).toBeVisible();
     await expect(page.getByText("Files this period: 0 of 10")).toBeVisible();

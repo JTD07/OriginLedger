@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteFooter } from "@/components/legal/site-footer";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { StatusBadge } from "@/components/a11y/status";
 import {
   DeletionCancelForm,
   DeletionRetryForm,
@@ -22,6 +23,8 @@ import {
   loadRetentionPolicy,
 } from "@/server/privacy/retention";
 import { getServerEnv } from "@/env/server";
+
+export const metadata = { title: "Data handling" };
 
 export default async function DataHandlingPage() {
   const user = await requireUser("/app/data-handling");
@@ -55,14 +58,14 @@ export default async function DataHandlingPage() {
     : { ok: true as const, job: null };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href="/app">
+        <Link className="min-h-11 underline" href="/app">
           Back to workspace
         </Link>
       </p>
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Data handling</h1>
+        <PageHeading>Data handling</PageHeading>
         <p>
           {organization.name}. OriginLedger supports documentation and
           transparency workflows. It does not certify legal or regulatory
@@ -120,12 +123,20 @@ export default async function DataHandlingPage() {
               Organization deletion
             </h2>
             {deletion.ok && deletion.job ? (
-              <p>
-                Status {deletion.job.status}. Step {deletion.job.currentStep}.
+              <StatusBadge
+                tone={
+                  deletion.job.status === "failed"
+                    ? "danger"
+                    : deletion.job.status === "completed"
+                      ? "success"
+                      : "busy"
+                }
+              >
+                {deletion.job.status}. Step {deletion.job.currentStep}.
                 {deletion.job.correlationId
                   ? ` Reference ${deletion.job.correlationId}.`
                   : ""}
-              </p>
+              </StatusBadge>
             ) : null}
             {deletion.ok &&
             deletion.job?.status === "failed" &&
@@ -150,7 +161,6 @@ export default async function DataHandlingPage() {
       ) : (
         <p>Only the organization owner can export or delete this workspace.</p>
       )}
-      <SiteFooter />
-    </main>
+    </>
   );
 }

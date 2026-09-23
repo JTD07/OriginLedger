@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeading } from "@/components/a11y/page-shell";
+import { EmptyState, StatusBadge } from "@/components/a11y/status";
 import { AssetUploadForm } from "@/components/assets/upload-form";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/session";
 import { getOrgAccess } from "@/server/tenancy/access";
+import { SAMPLE_PROJECT_NAME } from "@/server/samples/constants";
 
 export default async function ProjectPage({
   params,
@@ -31,13 +34,19 @@ export default async function ProjectPage({
     .order("created_at", { ascending: false });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
+    <>
       <p>
-        <Link className="underline" href="/app">
+        <Link className="min-h-11 underline" href="/app">
           Back to workspace
         </Link>
       </p>
-      <h1 className="text-3xl font-semibold tracking-tight">{project.name}</h1>
+      <PageHeading>{project.name}</PageHeading>
+      {project.is_sample ? (
+        <StatusBadge tone="warning">
+          Synthetic sample data. This is not a real origin record. Sample files
+          count toward the monthly file limit.
+        </StatusBadge>
+      ) : null}
       <AssetUploadForm
         projectId={project.id}
         canUpload={Boolean(access?.canMutate)}
@@ -50,16 +59,35 @@ export default async function ProjectPage({
           <ul className="flex flex-col gap-2">
             {assets.map((asset) => (
               <li key={asset.id}>
-                <Link className="underline" href={`/app/assets/${asset.id}`}>
-                  {asset.client_filename ?? "Untitled file"} ({asset.status})
+                <Link
+                  className="min-h-11 underline"
+                  href={`/app/assets/${asset.id}`}
+                >
+                  {asset.client_filename ?? "Untitled file"} (
+                  {asset.status.replaceAll("_", " ")})
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p>No files in this project yet.</p>
+          <EmptyState
+            title="No files in this project yet"
+            action={
+              access?.canMutate ? (
+                <p>
+                  {project.is_sample && project.name === SAMPLE_PROJECT_NAME
+                    ? "If sample creation is still running, wait and refresh. Otherwise upload a PDF, JPEG, PNG, or WebP file."
+                    : "Upload a PDF, JPEG, PNG, or WebP file."}
+                </p>
+              ) : (
+                <p>Viewers can inspect files after an operator uploads them.</p>
+              )
+            }
+          >
+            Origin-record files stay private to this organization.
+          </EmptyState>
         )}
       </section>
-    </main>
+    </>
   );
 }

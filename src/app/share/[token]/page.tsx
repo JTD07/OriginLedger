@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { PageHeading, ShareMain } from "@/components/a11y/page-shell";
 import {
   SHARE_PAGE_DESCRIPTION,
   SHARE_PAGE_TITLE,
@@ -29,10 +30,8 @@ export default async function SharePacketPage({
     : { ok: false as const };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-4 px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        {SHARE_PAGE_TITLE}
-      </h1>
+    <ShareMain>
+      <PageHeading>{SHARE_PAGE_TITLE}</PageHeading>
       <p>{SHARE_PAGE_DESCRIPTION}</p>
       {resolved.ok ? (
         <>
@@ -42,7 +41,7 @@ export default async function SharePacketPage({
             ownership, or regulatory certification.
           </p>
           <p>
-            <a className="underline" href={`/share/${token}/download`}>
+            <a className="min-h-11 underline" href={`/share/${token}/download`}>
               Download packet
             </a>
           </p>
@@ -50,6 +49,6 @@ export default async function SharePacketPage({
       ) : (
         <p>{SHARE_UNAVAILABLE_MESSAGE}</p>
       )}
-    </main>
+    </ShareMain>
   );
 }
