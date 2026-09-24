@@ -516,17 +516,18 @@ export async function authorizePreview(input: {
     return { ok: false, code: "not_found" };
   }
 
+  const downloadName = sanitizeClientFilename(asset.client_filename);
   const url = await input.store.createSignedPreview(
     asset.storage_key,
     isInlinePreviewMime(asset.verified_mime_type)
       ? undefined
-      : { download: asset.client_filename ?? true },
+      : { download: downloadName ?? true },
   );
   return {
     ok: true,
     url,
     mime: asset.verified_mime_type,
     inline: isInlinePreviewMime(asset.verified_mime_type),
-    filename: asset.client_filename,
+    filename: downloadName,
   };
 }

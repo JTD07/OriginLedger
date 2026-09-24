@@ -26,11 +26,13 @@ Canonical milestone tracker. Update this file when a milestone finishes, includi
       Sentry, scrubbing, structured logs, correlation IDs, health checks, organization export, controlled deletion, and draft legal pages.
 - [x] **Milestone 10 — UX and accessibility hardening**
       Semantic structure, keyboard and focus, forms, reduced motion, responsive states, labeled sample project, first-value path, axe, and Lighthouse on public pages. Not Resend email.
-- [ ] **Milestone 11 — Resend email**
-      Invitations and auth-related transactional mail.
-- [ ] **Milestone 12 — Public verification**
+- [ ] **Milestone 11 — Release-candidate audit**
+      Security, tenancy, storage, billing, privacy, accessibility, and dependency review. Not Resend email. Not a production approval.
+- [ ] **Milestone 12 — Resend email**
+      Invitations and auth-related transactional mail. Previously mislabeled as Milestone 11.
+- [ ] **Milestone 13 — Public verification**
       Publish/unpublish lot pages. Unauthenticated access only to published data.
-- [ ] **Milestone 13 — Launch hardening**
+- [ ] **Milestone 14 — Launch hardening**
       Access, rate limits, empty states, threat review. Still no compliance claims.
 
 ## Verification log
@@ -547,4 +549,34 @@ Landing best-practices 96 is `errors-in-console`. HTTP 404 is `ERRORED_DOCUMENT_
 - Landing `errors-in-console` was not treated as a WCAG pass. Axe passing is not complete WCAG certification.
 - Resend email and public lot verification are not implemented.
 
-**Next step:** Milestone 11 — Resend email. Do not start it until requested.
+**Next step:** Milestone 11 — release-candidate audit. The checklist label “Resend email” for Milestone 11 was stale. Resend is Milestone 12. Do not start it until requested.
+
+### Milestone 11
+
+**Date:** 2026-09-24
+
+**Intent:** Release-candidate audit only. Do not deploy, publish, add product features, implement Resend, or implement public lot verification. Do not mark the release approved.
+
+**Base commit:** `8ea8f938a5808ded436eea25f8bbf918b9128e27` (`feat: harden UX and accessibility`). Working tree after the audit also contains an uncommitted filename-sanitization fix. Details and the human-approval checklist are in `docs/RELEASE_CHECKLIST.md`.
+
+**Commands and results:**
+
+| Command                              | Result                                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm format:check`                  | Passed, as part of `pnpm check`.                                                                                                                             |
+| `pnpm lint`                          | Passed.                                                                                                                                                      |
+| `pnpm typecheck`                     | Passed.                                                                                                                                                      |
+| `pnpm test`                          | Passed. Vitest 45 files, 195 tests.                                                                                                                          |
+| `pnpm supabase:reset`                | **Blocked.** Docker Desktop daemon was not running (`dockerDesktopLinuxEngine` pipe missing). Local database was not reset. No hosted database was targeted. |
+| `pnpm supabase:test`                 | **Not run.** Blocked by the same Docker prerequisite.                                                                                                        |
+| `pnpm supabase:types`                | **Not run.** Schema did not change in this audit, and the local database was unavailable, so generated types were not re-diffed.                             |
+| `pnpm build`                         | Passed. Next.js 16.3.5 production build.                                                                                                                     |
+| `pnpm test:e2e`                      | **Not run.** Playwright needs the local Supabase stack.                                                                                                      |
+| `pnpm test:a11y`                     | **Not run.** Same prerequisite. Prior Milestone 10 axe results are not reused as this audit’s pass.                                                          |
+| `pnpm audit` and `pnpm audit --prod` | Passed. No known vulnerabilities reported. Node 24.21.0, pnpm 12.4.2.                                                                                        |
+
+**Confirmed fix:** client filenames used in preview `Content-Disposition` and signed-download names now have control characters and quotes removed, with a unit test.
+
+**Release status:** Not production-ready. Resend sending and public lot verification are absent and are release blockers. Docker must be started and the blocked commands rerun before a human can approve a release.
+
+**Next step:** Start Docker Desktop, then rerun `pnpm supabase:reset`, `pnpm supabase:test`, `pnpm supabase:types`, `pnpm test:e2e`, and `pnpm test:a11y`. Do not start Milestone 12 (Resend) or public verification until requested. Do not deploy.

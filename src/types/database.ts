@@ -1355,40 +1355,6 @@ export type Database = {
         Returns: Json;
       };
       create_organization: { Args: { p_name: string }; Returns: string };
-      dblink: { Args: { "": string }; Returns: Record<string, unknown>[] };
-      dblink_cancel_query: { Args: { "": string }; Returns: string };
-      dblink_close: { Args: { "": string }; Returns: string };
-      dblink_connect: { Args: { "": string }; Returns: string };
-      dblink_connect_u: { Args: { "": string }; Returns: string };
-      dblink_current_query: { Args: never; Returns: string };
-      dblink_disconnect:
-        | { Args: never; Returns: string }
-        | { Args: { "": string }; Returns: string };
-      dblink_error_message: { Args: { "": string }; Returns: string };
-      dblink_exec: { Args: { "": string }; Returns: string };
-      dblink_fdw_validator: {
-        Args: { catalog: unknown; options: string[] };
-        Returns: undefined;
-      };
-      dblink_get_connections: { Args: never; Returns: string[] };
-      dblink_get_notify:
-        | { Args: { conname: string }; Returns: Record<string, unknown>[] }
-        | { Args: never; Returns: Record<string, unknown>[] };
-      dblink_get_pkey: {
-        Args: { "": string };
-        Returns: Database["public"]["CompositeTypes"]["dblink_pkey_results"][];
-        SetofOptions: {
-          from: "*";
-          to: "dblink_pkey_results";
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
-      };
-      dblink_get_result: {
-        Args: { "": string };
-        Returns: Record<string, unknown>[];
-      };
-      dblink_is_busy: { Args: { "": string }; Returns: number };
       purge_organization_rows: {
         Args: { p_organization_id: string };
         Returns: undefined;
@@ -1515,10 +1481,7 @@ export type Database = {
       webhook_processing_status: "received" | "processed" | "failed";
     };
     CompositeTypes: {
-      dblink_pkey_results: {
-        position: number | null;
-        colname: string | null;
-      };
+      [_ in never]: never;
     };
   };
 };

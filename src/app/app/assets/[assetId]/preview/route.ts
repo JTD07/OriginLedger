@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/server/auth/session";
+import { sanitizeClientFilename } from "@/server/assets/constants";
 import { supabaseAssetObjectStore } from "@/server/assets/object-store";
 import { authorizePreview } from "@/server/assets/service";
 
@@ -26,7 +27,7 @@ export async function GET(
   }
 
   const disposition = result.inline ? "inline" : "attachment";
-  const filename = result.filename ?? "download";
+  const filename = sanitizeClientFilename(result.filename) ?? "download";
   const response = NextResponse.redirect(result.url);
   response.headers.set(
     "Content-Disposition",

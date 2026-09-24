@@ -24,6 +24,7 @@ describe("asset path helpers", () => {
     expect(sanitizeClientFilename("C:\\\\temp\\\\file.png")).toBe(
       "C:tempfile.png",
     );
+    expect(sanitizeClientFilename('lot"\r\n.png')).toBe("lot.png");
   });
 
   test("refuses oversized declared sizes before issuing a URL", () => {

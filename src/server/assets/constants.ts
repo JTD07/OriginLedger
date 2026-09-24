@@ -67,7 +67,11 @@ export function sanitizeClientFilename(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
-  const trimmed = value.replace(/[/\\]/g, "").trim();
+  const trimmed = value
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/["']/g, "")
+    .replace(/[/\\]/g, "")
+    .trim();
   if (trimmed.length === 0) {
     return null;
   }
